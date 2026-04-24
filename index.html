@@ -377,17 +377,14 @@
     background: var(--gold); color: #000; border-color: var(--gold);
   }
   .portfolio-grid {
-    display: grid; grid-template-columns: repeat(12, 1fr);
-    grid-auto-rows: 200px; gap: 4px; margin-top: 1.5rem;
+    display: grid; grid-template-columns: repeat(3, 1fr);
+    gap: 4px; margin-top: 1.5rem;
   }
-  .port-item { position: relative; overflow: hidden; cursor: pointer; }
-  .port-item:nth-child(1) { grid-column: span 7; grid-row: span 2; }
-  .port-item:nth-child(2) { grid-column: span 5; }
-  .port-item:nth-child(3) { grid-column: span 5; }
-  .port-item:nth-child(4) { grid-column: span 4; }
-  .port-item:nth-child(5) { grid-column: span 4; }
-  .port-item:nth-child(6) { grid-column: span 4; }
-  .port-bg { width: 100%; height: 100%; transition: transform .6s; }
+  .port-item {
+    position: relative; overflow: hidden; cursor: pointer;
+    aspect-ratio: 1 / 1;
+  }
+  .port-bg { width: 100%; height: 100%; object-fit: cover; transition: transform .6s; display: block; }
   .port-item:hover .port-bg { transform: scale(1.06); }
   .port-overlay {
     position: absolute; inset: 0;
@@ -791,8 +788,7 @@
     .hamburger { display: flex; }
     .services-grid { grid-template-columns: 1fr; }
     .steps-grid { grid-template-columns: 1fr 1fr; }
-    .portfolio-grid { display: flex; flex-direction: column; }
-    .portfolio-grid .port-item { height: 200px; }
+    .portfolio-grid { grid-template-columns: repeat(2, 1fr); }
     .testimonials-grid { grid-template-columns: 1fr; }
     .quiz-options { grid-template-columns: 1fr; }
     .quiz-card { padding: 1.5rem; }
@@ -1198,13 +1194,49 @@
       <button class="filter-btn" onclick="filterPort(this,'rustico')">Rústico</button>
     </div>
   </div>
-  <div class="portfolio-grid reveal-scale" id="portGrid">
-    <div class="port-item" data-cat="cozinha moderno"><div class="port-bg c1" style="height:100%"></div><div class="port-overlay"><span class="port-tag">Cozinha</span><span class="port-title">Cozinha Moderna Porto</span></div></div>
-    <div class="port-item" data-cat="roupeiro moderno"><div class="port-bg c2" style="height:100%"></div><div class="port-overlay"><span class="port-tag">Roupeiro</span><span class="port-title">Walk-in Closet Braga</span></div></div>
-    <div class="port-item" data-cat="cozinha rustico"><div class="port-bg c3" style="height:100%"></div><div class="port-overlay"><span class="port-tag">Cozinha</span><span class="port-title">Cozinha Rústica Lisboa</span></div></div>
-    <div class="port-item" data-cat="roupeiro rustico"><div class="port-bg c4" style="height:100%"></div><div class="port-overlay"><span class="port-tag">Roupeiro</span><span class="port-title">Roupeiro Carvalho Natural</span></div></div>
-    <div class="port-item" data-cat="cozinha moderno"><div class="port-bg c5" style="height:100%"></div><div class="port-overlay"><span class="port-tag">Cozinha</span><span class="port-title">Cozinha Open Space Aveiro</span></div></div>
-    <div class="port-item" data-cat="roupeiro moderno"><div class="port-bg c6" style="height:100%"></div><div class="port-overlay"><span class="port-tag">Roupeiro</span><span class="port-title">Roupeiro Premium Lacado</span></div></div>
+    <div class="portfolio-grid reveal-scale" id="portGrid">
+    <div class="port-item" data-cat="cozinha moderno">
+      <img src="https://i.imgur.com/pAJf6cp.jpeg" class="port-bg" alt="Cozinha Moderna Porto" style="height:100%;object-fit:cover;">
+      <div class="port-overlay">
+        <span class="port-tag">Cozinha</span>
+        <span class="port-title">Cozinha Moderna Porto</span>
+      </div>
+    </div>
+    <div class="port-item" data-cat="roupeiro moderno">
+      <img src="https://i.imgur.com/bq9t1kr.jpeg" class="port-bg" alt="Walk-in Closet Braga" style="height:100%;object-fit:cover;">
+      <div class="port-overlay">
+        <span class="port-tag">Roupeiro</span>
+        <span class="port-title">Walk-in Closet Braga</span>
+      </div>
+    </div>
+    <div class="port-item" data-cat="cozinha rustico">
+      <img src="https://i.imgur.com/nv6QDHN.jpeg" class="port-bg" alt="Cozinha Rústica Lisboa" style="height:100%;object-fit:cover;">
+      <div class="port-overlay">
+        <span class="port-tag">Cozinha</span>
+        <span class="port-title">Cozinha Rústica Lisboa</span>
+      </div>
+    </div>
+    <div class="port-item" data-cat="roupeiro rustico">
+      <img src="https://i.imgur.com/yKAnJHj.jpeg" class="port-bg" alt="Roupeiro Carvalho Natural" style="height:100%;object-fit:cover;">
+      <div class="port-overlay">
+        <span class="port-tag">Roupeiro</span>
+        <span class="port-title">Roupeiro Carvalho Natural</span>
+      </div>
+    </div>
+    <div class="port-item" data-cat="cozinha moderno">
+      <img src="https://i.imgur.com/eEspcPQ.jpeg" class="port-bg" alt="Cozinha Open Space Aveiro" style="height:100%;object-fit:cover;">
+      <div class="port-overlay">
+        <span class="port-tag">Cozinha</span>
+        <span class="port-title">Cozinha Open Space Aveiro</span>
+      </div>
+    </div>
+    <div class="port-item" data-cat="roupeiro moderno">
+      <img src="https://i.imgur.com/TabST4b.jpeg" class="port-bg" alt="Roupeiro Premium Lacado" style="height:100%;object-fit:cover;">
+      <div class="port-overlay">
+        <span class="port-tag">Roupeiro</span>
+        <span class="port-title">Roupeiro Premium Lacado</span>
+      </div>
+    </div>
   </div>
   <div style="text-align:center; margin-top:2.5rem;" class="reveal">
     <a href="https://www.instagram.com/carpintariaandreo/" target="_blank" class="btn-ghost">Ver mais no Instagram →</a>
