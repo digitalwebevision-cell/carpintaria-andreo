@@ -65,7 +65,7 @@
     height: 100%;
     background: linear-gradient(90deg, transparent, var(--gold), transparent);
     width: 0%;
-    animation: splashLoad 9.5s linear 0.8s forwards;
+    animation: splashLoad 7.5s linear 0.3s forwards;
   }
   @keyframes splashLoad {
     0% { width: 0%; }
@@ -1704,16 +1704,31 @@
 </a>
 
 <script>
+// Logo set in HTML directly
+
+// Splash - runs independently, guaranteed to work
+(function() {
+  var splash = document.getElementById('splash');
+  if (!splash) return;
+  var timer = setTimeout(function() {
+    splash.style.opacity = '0';
+    splash.style.visibility = 'hidden';
+    setTimeout(function() {
+      if (splash.parentNode) splash.parentNode.removeChild(splash);
+    }, 900);
+  }, 8000);
+  // Also allow clicking to dismiss early
+  splash.addEventListener('click', function() {
+    clearTimeout(timer);
+    splash.style.opacity = '0';
+    splash.style.visibility = 'hidden';
+    setTimeout(function() {
+      if (splash.parentNode) splash.parentNode.removeChild(splash);
+    }, 900);
+  });
+})();
+
 try {
-const LOGO_SRC = 'https://i.imgur.com/pcxNTfc.jpeg';
-document.querySelectorAll('img[src="https://i.imgur.com/pcxNTfc.jpeg"]').forEach(img => img.src = LOGO_SRC);
-
-// Splash
-setTimeout(() => {
-  document.getElementById('splash').classList.add('fade-out');
-  setTimeout(() => document.getElementById('splash').remove(), 1000);
-}, 10000);
-
 // Nav scroll
 window.addEventListener('scroll', () => {
   document.getElementById('navbar').classList.toggle('scrolled', window.scrollY > 50);
