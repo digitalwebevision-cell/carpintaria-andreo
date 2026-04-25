@@ -494,40 +494,32 @@
     border-radius: 50%;
   }
 
-  .quiz-wrapper { max-width: 760px; margin: 0 auto; position: relative; z-index: 1; }
+
   .quiz-header { text-align: center; margin-bottom: 3rem; }
   .quiz-header .section-label { justify-content: center; }
   .quiz-header .section-title { color: #2A1E0A; }
   .quiz-header .section-desc { margin: 0 auto; color: rgba(42,30,10,0.55); }
 
   .quiz-card {
-    background: #FAF7F2;
-    border: 1px solid var(--border);
-    padding: 3rem;
+    background: transparent;
+    border: none;
+    padding: 0;
     position: relative;
   }
-  .quiz-card::before, .quiz-card::after,
-  .quiz-card .corner-tr, .quiz-card .corner-bl {
-    content: '';
-    position: absolute;
-    width: 20px; height: 20px;
-  }
-  .quiz-card::before { top: -1px; left: -1px; border-top: 1px solid var(--gold); border-left: 1px solid var(--gold); }
-  .quiz-card::after { bottom: -1px; right: -1px; border-bottom: 1px solid var(--gold); border-right: 1px solid var(--gold); }
 
   .quiz-progress { display: flex; align-items: center; gap: 1rem; margin-bottom: 2rem; }
   .progress-bar { flex: 1; height: 1px; background: rgba(176,125,32,0.2); overflow: hidden; }
   .progress-fill { height: 100%; background: var(--gold); transition: width .4s ease; }
-  .progress-txt { color: rgba(42,30,10,0.4); font-size: .75rem; letter-spacing: .08em; white-space: nowrap; }
+  .progress-txt { color: rgba(42,30,10,0.45); font-size: .75rem; letter-spacing: .08em; white-space: nowrap; }
 
   .quiz-question {
     font-family: 'Cormorant Garamond', serif;
-    font-size: 1.5rem; font-weight: 600; color: #2A1E0A;
+    font-size: 1.3rem; font-weight: 600; color: #2A1E0A;
     margin-bottom: 2rem; line-height: 1.35;
   }
 
   .quiz-options {
-    display: grid; grid-template-columns: 1fr 1fr; gap: .6rem; margin-bottom: 2rem;
+    display: flex; flex-direction: column; gap: .5rem; margin-bottom: 1.5rem;
   }
   .quiz-opt {
     padding: 1rem 1.2rem;
@@ -546,12 +538,12 @@
 
   .quiz-nav { display: flex; justify-content: space-between; align-items: center; margin-top: .5rem; }
   .quiz-btn-back {
-    background: transparent; border: 1px solid rgba(201,168,76,0.2);
-    color: rgba(245,240,228,0.4); padding: .7rem 1.5rem;
+    background: transparent; border: 1px solid rgba(42,30,10,0.2);
+    color: rgba(42,30,10,0.5); padding: .7rem 1.5rem;
     font-family: 'Jost', sans-serif; font-size: .78rem; font-weight: 500; letter-spacing: .08em;
     border-radius: 1px; cursor: pointer; transition: all .2s; text-transform: uppercase;
   }
-  .quiz-btn-back:hover { border-color: var(--gold); color: var(--gold); }
+  .quiz-btn-back:hover { border-color: var(--gold-dark); color: var(--gold-dark); }
   .quiz-btn-next {
     background: var(--gold); color: #000; padding: .7rem 2rem;
     border: none; font-family: 'Jost', sans-serif; font-size: .78rem; font-weight: 600;
@@ -593,7 +585,7 @@
   .quiz-result.visible { display: block; }
   .result-icon { font-size: 2.5rem; text-align: center; margin-bottom: 1rem; }
   .result-title {
-    font-family: 'Cormorant Garamond', serif; font-size: 1.8rem; font-weight: 600;
+    font-family: 'Cormorant Garamond', serif; font-size: 1.5rem; font-weight: 600;
     color: #2A1E0A; text-align: center; margin-bottom: .5rem;
   }
   .result-subtitle {
@@ -1162,6 +1154,142 @@
     .steps-grid { grid-template-columns: 1fr; }
   }
 
+
+  /* ─── VISUAL QUIZ ─── */
+  .quiz-wrapper { max-width: 1060px; margin: 0 auto; position: relative; z-index: 1; }
+
+  .quiz-layout {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0;
+    min-height: 520px;
+    border: 1px solid var(--border);
+    overflow: hidden;
+  }
+
+  /* LEFT: question panel */
+  .quiz-panel {
+    background: #FAF7F2;
+    padding: 2.5rem 2rem;
+    display: flex; flex-direction: column;
+    border-right: 1px solid var(--border);
+  }
+
+  /* RIGHT: visual panel */
+  .quiz-visual-panel {
+    position: relative;
+    overflow: hidden;
+    background: #1C1408;
+    min-height: 380px;
+  }
+
+  .viz-slide {
+    position: absolute; inset: 0;
+    opacity: 0;
+    transition: opacity .6s ease, transform .6s ease;
+    transform: scale(1.04);
+  }
+  .viz-slide.active {
+    opacity: 1;
+    transform: scale(1);
+  }
+  .viz-slide img {
+    width: 100%; height: 100%;
+    object-fit: cover;
+  }
+
+  /* overlay gradient on image */
+  .viz-overlay {
+    position: absolute; inset: 0;
+    background: linear-gradient(to top, rgba(28,20,8,.75) 0%, transparent 55%);
+    z-index: 1;
+  }
+
+  /* caption on image */
+  .viz-caption {
+    position: absolute; bottom: 0; left: 0; right: 0;
+    padding: 1.5rem;
+    z-index: 2;
+    transform: translateY(8px);
+    transition: transform .4s ease;
+  }
+  .viz-slide.active .viz-caption { transform: translateY(0); }
+
+  .viz-tag {
+    font-size: .62rem; letter-spacing: .2em; text-transform: uppercase;
+    color: var(--gold-light); font-weight: 600; margin-bottom: .3rem;
+  }
+  .viz-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.2rem; font-weight: 600; color: #fff;
+    line-height: 1.3;
+  }
+  .viz-desc {
+    font-size: .75rem; color: rgba(255,255,255,.55);
+    margin-top: .3rem; line-height: 1.5;
+  }
+
+  /* dots navigation on visual */
+  .viz-dots {
+    position: absolute; top: 1rem; right: 1rem;
+    display: flex; flex-direction: column; gap: .4rem; z-index: 2;
+  }
+  .viz-dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: rgba(255,255,255,.3);
+    transition: background .3s, transform .3s;
+    cursor: default;
+  }
+  .viz-dot.active {
+    background: var(--gold-light);
+    transform: scale(1.4);
+  }
+
+  /* step indicator pill */
+  .viz-step-pill {
+    position: absolute; top: 1rem; left: 1rem;
+    background: rgba(28,20,8,.7);
+    border: 1px solid rgba(201,168,76,.3);
+    padding: .3rem .8rem;
+    font-size: .65rem; letter-spacing: .12em; text-transform: uppercase;
+    color: var(--gold-light); z-index: 2;
+    backdrop-filter: blur(8px);
+    border-radius: 2px;
+  }
+
+  /* result visual panel */
+  .viz-result-grid {
+    display: grid; grid-template-columns: 1fr 1fr;
+    grid-template-rows: 1fr 1fr;
+    height: 100%; gap: 2px;
+  }
+  .viz-result-grid img {
+    width: 100%; height: 100%; object-fit: cover;
+    opacity: 0;
+    transition: opacity .5s ease;
+  }
+  .viz-result-grid img.loaded { opacity: 1; }
+
+  /* Email step uses same layout */
+  .quiz-email-step { display: none; }
+  .quiz-email-step.visible { display: flex; flex-direction: column; }
+
+  /* result step */
+  .quiz-result { display: none; }
+  .quiz-result.visible { display: block; }
+  .quiz-main.hidden { display: none; }
+
+  /* Mobile quiz layout */
+  @media (max-width: 768px) {
+    .quiz-layout { grid-template-columns: 1fr; }
+    .quiz-visual-panel { min-height: 240px; border-right: none; border-bottom: 1px solid var(--border); }
+    .quiz-panel { padding: 1.5rem 1.2rem; }
+  }
+
+
+  .email-input::placeholder, .form-input::placeholder, .form-textarea::placeholder { color: rgba(42,30,10,0.3); }
+  .quiz-opt { text-align: left; }
+
 </style>
 </head>
 <body>
@@ -1394,80 +1522,107 @@
 <!-- QUIZ -->
 <section id="quiz">
   <div class="quiz-wrapper">
-    <div class="quiz-header reveal-scale">
+    <div class="quiz-header reveal-scale" style="text-align:center; margin-bottom:2.5rem;">
       <p class="section-label">Orçamento personalizado</p>
-      <h2 class="section-title">Descubra o seu orçamento<br>em 2 minutos</h2>
-      <p class="section-desc">Responda a 6 perguntas simples e receba a estimativa personalizada diretamente no seu email.</p>
+      <h2 class="section-title">Descubra a sua cozinha<br>de sonho em 2 minutos</h2>
+      <p class="section-desc" style="margin:0 auto; text-align:center;">Responda a 6 perguntas e veja em tempo real imagens que correspondem ao seu gosto — depois enviamos a estimativa para o seu email.</p>
     </div>
-    <div class="quiz-card reveal-scale">
 
-      <!-- QUIZ MAIN -->
-      <div class="quiz-main" id="quizMain">
-        <div class="quiz-progress">
-          <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:16%"></div></div>
-          <span class="progress-txt" id="progressTxt">1 / 6</span>
+    <div class="quiz-layout reveal-scale">
+
+      <!-- LEFT: Question Panel -->
+      <div class="quiz-panel" id="quizPanelLeft">
+
+        <!-- QUIZ MAIN -->
+        <div class="quiz-main" id="quizMain">
+          <div class="quiz-progress">
+            <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:16%"></div></div>
+            <span class="progress-txt" id="progressTxt">1 / 6</span>
+          </div>
+          <p class="quiz-question" id="quizQuestion"></p>
+          <div class="quiz-options" id="quizOptions"></div>
+          <div class="quiz-nav">
+            <button class="quiz-btn-back" id="btnBack" onclick="quizBack()" style="visibility:hidden">← Anterior</button>
+            <button class="quiz-btn-next" id="btnNext" onclick="quizNext()" disabled>Próxima →</button>
+          </div>
         </div>
-        <p class="quiz-question" id="quizQuestion"></p>
-        <div class="quiz-options" id="quizOptions"></div>
-        <div class="quiz-nav">
-          <button class="quiz-btn-back" id="btnBack" onclick="quizBack()" style="visibility:hidden">← Anterior</button>
-          <button class="quiz-btn-next" id="btnNext" onclick="quizNext()" disabled>Próxima →</button>
+
+        <!-- EMAIL STEP -->
+        <div class="quiz-email-step" id="quizEmailStep">
+          <div style="margin-bottom:1.5rem;">
+            <p class="quiz-question" style="margin-bottom:.4rem;">Quase pronto!</p>
+            <p style="color:rgba(42,30,10,0.5); font-size:.85rem; line-height:1.6;">Deixe o seu contacto e enviamos a estimativa personalizada com as imagens do seu perfil.</p>
+          </div>
+          <div class="email-form-group">
+            <label class="email-label">Nome</label>
+            <input type="text" class="email-input" id="emailName" placeholder="O seu nome">
+          </div>
+          <div class="email-form-group">
+            <label class="email-label">Email *</label>
+            <input type="email" class="email-input" id="emailAddress" placeholder="email@exemplo.com">
+          </div>
+          <div class="email-form-group">
+            <label class="email-label">Telefone (opcional)</label>
+            <input type="tel" class="email-input" id="emailPhone" placeholder="+351 9XX XXX XXX">
+          </div>
+          <div class="email-privacy">
+            <input type="checkbox" id="privacyCheck">
+            <label for="privacyCheck">Aceito ser contactado pela Carpintaria Andreo. Dados não partilhados com terceiros.</label>
+          </div>
+          <div class="quiz-nav" style="margin-top:1rem;">
+            <button class="quiz-btn-back" onclick="backToQuiz()">← Rever</button>
+            <button class="quiz-btn-next" onclick="sendEmail()">Enviar →</button>
+          </div>
         </div>
+
+        <!-- RESULT -->
+        <div class="quiz-result" id="quizResult">
+          <div class="result-icon" id="resultIcon"></div>
+          <div class="result-title" id="resultTitle"></div>
+          <div class="result-subtitle" id="resultSubtitle"></div>
+          <p class="result-desc" id="resultDesc"></p>
+          <div class="result-sent-box">
+            <div class="sent-label">✓ Estimativa enviada para</div>
+            <div class="sent-email" id="sentEmail"></div>
+            <div class="sent-note">Entraremos em contacto em menos de 24 horas.</div>
+          </div>
+          <div class="result-btns" style="flex-direction:column; gap:.7rem; margin-top:1rem;">
+            <a id="waResultLink" href="https://wa.me/351960082729" target="_blank" class="btn-whatsapp" style="justify-content:center;">
+              <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+              Falar no WhatsApp
+            </a>
+            <button class="btn-restart" onclick="quizRestart()" style="width:100%;">↺ Refazer quiz</button>
+          </div>
+        </div>
+
       </div>
 
-      <!-- EMAIL STEP -->
-      <div class="quiz-email-step" id="quizEmailStep">
-        <div style="text-align:center; margin-bottom:2rem;">
-          <div style="font-size:2rem; margin-bottom:.8rem;">✉️</div>
-          <p class="result-title" style="font-size:1.5rem;">Quase pronto!</p>
-          <p style="color:rgba(245,240,228,0.5); font-size:.9rem; margin-top:.5rem;">Indique o seu email e enviamos a estimativa personalizada em poucos minutos.</p>
-        </div>
-        <div class="email-form-group">
-          <label class="email-label">Nome</label>
-          <input type="text" class="email-input" id="emailName" placeholder="O seu nome">
-        </div>
-        <div class="email-form-group">
-          <label class="email-label">Email *</label>
-          <input type="email" class="email-input" id="emailAddress" placeholder="email@exemplo.com">
-          <p class="email-note">Enviamos a estimativa detalhada e entraremos em contacto para agendar a visita gratuita.</p>
-        </div>
-        <div class="email-form-group">
-          <label class="email-label">Telefone (opcional)</label>
-          <input type="tel" class="email-input" id="emailPhone" placeholder="+351 9XX XXX XXX">
-        </div>
-        <div class="email-privacy">
-          <input type="checkbox" id="privacyCheck">
-          <label for="privacyCheck">Aceito receber a estimativa e ser contactado pela Carpintaria Andreo. Os seus dados não serão partilhados com terceiros.</label>
-        </div>
-        <div class="quiz-nav" style="margin-top:1rem;">
-          <button class="quiz-btn-back" onclick="backToQuiz()">← Rever respostas</button>
-          <button class="quiz-btn-next" id="btnSendEmail" onclick="sendEmail()">Receber Estimativa →</button>
-        </div>
-      </div>
+      <!-- RIGHT: Visual Panel -->
+      <div class="quiz-visual-panel" id="quizVisualPanel">
+        <div class="viz-step-pill" id="vizStepPill">Passo 1 de 6</div>
+        <div class="viz-dots" id="vizDots"></div>
 
-      <!-- RESULT -->
-      <div class="quiz-result" id="quizResult">
-        <div class="result-icon" id="resultIcon"></div>
-        <div class="result-title" id="resultTitle"></div>
-        <div class="result-subtitle" id="resultSubtitle"></div>
-        <p class="result-desc" id="resultDesc"></p>
-        <div class="result-sent-box">
-          <div class="sent-label">✓ Estimativa enviada para</div>
-          <div class="sent-email" id="sentEmail"></div>
-          <div class="sent-note">Verifique a sua caixa de entrada. Entraremos em contacto em menos de 24 horas.</div>
+        <!-- Slides injected by JS -->
+        <div id="vizSlides"></div>
+
+        <!-- Result grid (hidden until result) -->
+        <div class="viz-result-grid" id="vizResultGrid" style="display:none;">
+          <img id="vr1" alt=""> <img id="vr2" alt="">
+          <img id="vr3" alt=""> <img id="vr4" alt="">
         </div>
-        <div class="result-btns">
-          <a href="https://wa.me/351960082729?text=Olá!%20Fiz%20o%20quiz%20no%20vosso%20site%20e%20gostaria%20de%20agendar%20a%20visita." target="_blank" class="btn-whatsapp">
-            <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
-            Falar no WhatsApp
-          </a>
-          <button class="btn-restart" onclick="quizRestart()">↺ Refazer quiz</button>
+
+        <div class="viz-overlay"></div>
+        <div class="viz-caption" id="vizCaption">
+          <div class="viz-tag" id="vizTag"></div>
+          <div class="viz-title" id="vizTitle"></div>
+          <div class="viz-desc" id="vizDescEl"></div>
         </div>
       </div>
 
     </div>
   </div>
 </section>
+
 
 <!-- INSTAGRAM -->
 <section id="instagram">
@@ -1648,6 +1803,60 @@ function filterPort(btn, cat) {
 }
 
 // Quiz
+
+const imageMap = [
+  // Q0: tipo de projeto
+  [
+    { url: 'https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=800&q=80', tag: 'Cozinha Completa', title: 'Cozinha Nova por Medida', desc: 'Do zero ao acabamento final, totalmente personalizada' },
+    { url: 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=800&q=80', tag: 'Roupeiro', title: 'Walk-in Closet Exclusivo', desc: 'Organização inteligente para o seu guarda-roupa' },
+    { url: 'https://images.unsplash.com/photo-1556909172-54557c7e4fb7?w=800&q=80', tag: 'Projeto Completo', title: 'Cozinha + Roupeiro', desc: 'O espaço todo transformado em harmonia' },
+    { url: 'https://images.unsplash.com/photo-1484154218962-a197022b5858?w=800&q=80', tag: 'Remodelação', title: 'Renovação Total', desc: 'Novos acabamentos, nova vida ao seu espaço' },
+  ],
+  // Q1: área
+  [
+    { url: 'https://images.unsplash.com/photo-1565538810643-b5bdb714032a?w=800&q=80', tag: 'Espaço Compacto', title: 'Cozinha Pequena Otimizada', desc: 'Cada centímetro aproveitado ao máximo' },
+    { url: 'https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=800&q=80', tag: 'Espaço Médio', title: 'Cozinha Familiar Confortável', desc: 'Espaço ideal para o dia a dia' },
+    { url: 'https://images.unsplash.com/photo-1600489000022-c2086d79f9d4?w=800&q=80', tag: 'Espaço Grande', title: 'Cozinha Espaçosa com Ilha', desc: 'Amplitude e funcionalidade em harmonia' },
+    { url: 'https://images.unsplash.com/photo-1556909172-54557c7e4fb7?w=800&q=80', tag: 'Grande Espaço', title: 'Cozinha Open Space Premium', desc: 'Espaço generoso para viver e receber' },
+  ],
+  // Q2: estilo
+  [
+    { url: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=800&q=80', tag: 'Moderno · Minimalista', title: 'Linhas Limpas e Puras', desc: 'Sem excessos, apenas o essencial com elegância' },
+    { url: 'https://images.unsplash.com/photo-1600121848594-d8644e57abab?w=800&q=80', tag: 'Rústico · Natural', title: 'Madeira e Calidez Natural', desc: 'A beleza da natureza no coração da sua casa' },
+    { url: 'https://images.unsplash.com/photo-1583845112203-29329902332e?w=800&q=80', tag: 'Clássico · Sofisticado', title: 'Elegância Atemporal', desc: 'Detalhes que nunca passam de moda' },
+    { url: 'https://images.unsplash.com/photo-1556911220-bff31c812dba?w=800&q=80', tag: 'Contemporâneo · Design', title: 'Vanguarda e Personalidade', desc: 'Para quem não segue tendências, cria-as' },
+  ],
+  // Q3: material
+  [
+    { url: 'https://images.unsplash.com/photo-1600585154526-990dced4db0d?w=800&q=80', tag: 'MDF Lacado', title: 'Acabamento Liso e Moderno', desc: 'Branco, cinza, preto — qualquer cor RAL possível' },
+    { url: 'https://images.unsplash.com/photo-1616137466211-f939a420be84?w=800&q=80', tag: 'Madeira Maciça', title: 'Carvalho · Nogueira · Cerejeira', desc: 'A nobreza da madeira real em cada detalhe' },
+    { url: 'https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=800&q=80', tag: 'Folheado Natural', title: 'Aspeto Natural, Maior Durabilidade', desc: 'O melhor dos dois mundos — beleza e resistência' },
+    { url: 'https://images.unsplash.com/photo-1556909172-54557c7e4fb7?w=800&q=80', tag: 'À Sua Escolha', title: 'Consultoria Personalizada', desc: 'Ajudamo-lo a encontrar o material perfeito' },
+  ],
+  // Q4: extras
+  [
+    { url: 'https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=800&q=80', tag: 'Iluminação LED', title: 'Atmosfera com Luz Integrada', desc: 'LED sob armários, plintos e interiores' },
+    { url: 'https://images.unsplash.com/photo-1556909172-54557c7e4fb7?w=800&q=80', tag: 'Eletrodomésticos', title: 'Totalmente Integrados', desc: 'Forno, frigorífico, lava-louça invisíveis e funcionais' },
+    { url: 'https://images.unsplash.com/photo-1600489000022-c2086d79f9d4?w=800&q=80', tag: 'Premium Completo', title: 'LED + Eletrodomésticos', desc: 'A cozinha mais completa e sofisticada' },
+    { url: 'https://images.unsplash.com/photo-1565538810643-b5bdb714032a?w=800&q=80', tag: 'Só Mobiliário', title: 'Funcional e Elegante', desc: 'Qualidade máxima no essencial' },
+  ],
+  // Q5: prazo
+  [
+    { url: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=800&q=80', tag: 'Projeto Urgente', title: 'Arranque Imediato', desc: 'Visita esta semana, projeto em menos de 2 meses' },
+    { url: 'https://images.unsplash.com/photo-1556911220-bff31c812dba?w=800&q=80', tag: 'Planeado', title: 'Com Tempo para Perfeição', desc: 'Cada detalhe pensado com calma e precisão' },
+    { url: 'https://images.unsplash.com/photo-1583845112203-29329902332e?w=800&q=80', tag: 'Sem Pressa', title: 'Projeto Desenvolvido ao Seu Ritmo', desc: 'Tomamos o tempo necessário para o resultado perfeito' },
+    { url: 'https://images.unsplash.com/photo-1616137466211-f939a420be84?w=800&q=80', tag: 'A Planear', title: 'Comece a Sonhar Agora', desc: 'Exploramos opções juntos, sem compromisso' },
+  ],
+];
+
+// Result images (4 photos for the result grid)
+const resultImages = [
+  'https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=400&q=80',
+  'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=400&q=80',
+  'https://images.unsplash.com/photo-1616137466211-f939a420be84?w=400&q=80',
+  'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=400&q=80',
+];
+
 const quizData = [
   { q: "Que tipo de projeto pretende realizar?", opts: [{ icon: "🍳", text: "Cozinha nova completa", weight: { base: 8000, mul: 1.0 } }, { icon: "👔", text: "Roupeiro / Walk-in Closet", weight: { base: 3000, mul: 0.7 } }, { icon: "🏠", text: "Cozinha + Roupeiro(s)", weight: { base: 10000, mul: 1.4 } }, { icon: "🔨", text: "Remodelação de existente", weight: { base: 2000, mul: 0.5 } }] },
   { q: "Qual é a área aproximada do espaço?", opts: [{ icon: "📦", text: "Pequeno (menos de 8 m²)", weight: 0.7 }, { icon: "🏠", text: "Médio (8 a 15 m²)", weight: 1.0 }, { icon: "🏡", text: "Grande (15 a 25 m²)", weight: 1.4 }, { icon: "🏰", text: "Muito grande (+25 m²)", weight: 1.9 }] },
@@ -1658,22 +1867,69 @@ const quizData = [
 ];
 
 const profiles = {
-  low: { icon: "🪵", title: "Projeto Essencial", sub: "Qualidade sem excessos", desc: "O seu projeto tem um perfil funcional e elegante. A nossa equipa enviará uma estimativa detalhada e entrará em contacto para agendar a visita gratuita." },
-  mid: { icon: "🏠", title: "Projeto Intermédio", sub: "Equilíbrio perfeito", desc: "O seu projeto combina bons materiais com funcionalidades modernas. Enviar-lhe-emos a estimativa personalizada com todas as opções disponíveis." },
-  high: { icon: "✨", title: "Projeto Premium", sub: "Excelência em cada detalhe", desc: "O seu projeto tem um perfil premium. Receberá uma proposta detalhada com os melhores materiais e acabamentos que temos disponíveis." },
-  luxury: { icon: "💎", title: "Projeto de Luxo", sub: "Para os mais exigentes", desc: "O seu projeto é de nível superior. Um dos nossos consultores entrará em contacto para agendar uma reunião personalizada e apresentar as melhores soluções." }
+  low:    { icon: "🪵", title: "Projeto Essencial",    sub: "Qualidade sem excessos",      desc: "O seu projeto tem um perfil funcional e elegante. Enviamos a estimativa detalhada e agendamos a visita gratuita." },
+  mid:    { icon: "🏠", title: "Projeto Intermédio",   sub: "Equilíbrio perfeito",         desc: "Bons materiais e funcionalidades modernas. Receberá uma proposta personalizada com todas as opções." },
+  high:   { icon: "✨", title: "Projeto Premium",      sub: "Excelência em cada detalhe",  desc: "Perfil premium. Proposta detalhada com os melhores materiais e acabamentos disponíveis." },
+  luxury: { icon: "💎", title: "Projeto de Luxo",      sub: "Para os mais exigentes",      desc: "Nível superior. Um consultor entrará em contacto para uma reunião personalizada." }
 };
 
 let currentQ = 0, answers = [], quizProfile = null;
+
+// ── Build slides ──
+function buildSlides() {
+  const slidesEl = document.getElementById('vizSlides');
+  const dotsEl   = document.getElementById('vizDots');
+  slidesEl.innerHTML = '';
+  dotsEl.innerHTML   = '';
+
+  // For each question, create one slide per answer option (4 per question = 24 total)
+  // But we show only the selected one, defaulting to index 0
+  quizData.forEach((q, qi) => {
+    q.opts.forEach((opt, oi) => {
+      const img = imageMap[qi][oi];
+      const slide = document.createElement('div');
+      slide.className = 'viz-slide';
+      slide.id = `slide-${qi}-${oi}`;
+      slide.innerHTML = `<img src="${img.url}" alt="${img.title}" loading="lazy">`;
+      slidesEl.appendChild(slide);
+    });
+    // Dot per question
+    const dot = document.createElement('div');
+    dot.className = 'viz-dot' + (qi === 0 ? ' active' : '');
+    dot.id = `dot-${qi}`;
+    dotsEl.appendChild(dot);
+  });
+}
+
+function updateVisual(qIdx, optIdx) {
+  // Deactivate all slides
+  document.querySelectorAll('.viz-slide').forEach(s => s.classList.remove('active'));
+  // Activate target
+  const target = document.getElementById(`slide-${qIdx}-${optIdx}`);
+  if (target) target.classList.add('active');
+
+  // Update dots
+  document.querySelectorAll('.viz-dot').forEach((d, i) => d.classList.toggle('active', i === qIdx));
+
+  // Update caption
+  const img = imageMap[qIdx][optIdx];
+  document.getElementById('vizTag').textContent   = img.tag;
+  document.getElementById('vizTitle').textContent = img.title;
+  document.getElementById('vizDescEl').textContent = img.desc;
+
+  // Update step pill
+  document.getElementById('vizStepPill').textContent = `Passo ${qIdx + 1} de ${quizData.length}`;
+}
 
 function renderQuiz() {
   const data = quizData[currentQ];
   document.getElementById('quizQuestion').textContent = data.q;
   document.getElementById('progressFill').style.width = ((currentQ + 1) / quizData.length * 100) + '%';
-  document.getElementById('progressTxt').textContent = `${currentQ + 1} / ${quizData.length}`;
+  document.getElementById('progressTxt').textContent  = `${currentQ + 1} / ${quizData.length}`;
   document.getElementById('btnBack').style.visibility = currentQ > 0 ? 'visible' : 'hidden';
   document.getElementById('btnNext').disabled = answers[currentQ] === undefined;
   document.getElementById('btnNext').textContent = currentQ === quizData.length - 1 ? 'Avançar →' : 'Próxima →';
+
   const optsEl = document.getElementById('quizOptions');
   optsEl.innerHTML = '';
   data.opts.forEach((opt, i) => {
@@ -1683,18 +1939,28 @@ function renderQuiz() {
     btn.onclick = () => selectOpt(i);
     optsEl.appendChild(btn);
   });
+
+  // Update visual: show selected answer image, or first option if none selected
+  const visIdx = answers[currentQ] !== undefined ? answers[currentQ] : 0;
+  updateVisual(currentQ, visIdx);
 }
 
 function selectOpt(i) {
   answers[currentQ] = i;
   document.querySelectorAll('.quiz-opt').forEach((b, j) => b.classList.toggle('selected', j === i));
   document.getElementById('btnNext').disabled = false;
+  updateVisual(currentQ, i);
 }
 
 function quizNext() {
   if (answers[currentQ] === undefined) return;
-  if (currentQ < quizData.length - 1) { currentQ++; renderQuiz(); }
-  else { calculateProfile(); showEmailStep(); }
+  if (currentQ < quizData.length - 1) {
+    currentQ++;
+    renderQuiz();
+  } else {
+    calculateProfile();
+    showEmailStep();
+  }
 }
 
 function quizBack() {
@@ -1706,26 +1972,53 @@ function calculateProfile() {
   let score = typeOpt.weight.base, mul = typeOpt.weight.mul;
   for (let i = 1; i < quizData.length; i++) mul *= quizData[i].opts[answers[i]].weight;
   const total = score * mul;
-  if (total < 7000) quizProfile = profiles.low;
+  if (total < 7000)       quizProfile = profiles.low;
   else if (total < 15000) quizProfile = profiles.mid;
   else if (total < 30000) quizProfile = profiles.high;
-  else quizProfile = profiles.luxury;
+  else                    quizProfile = profiles.luxury;
 }
 
 function showEmailStep() {
   document.getElementById('quizMain').classList.add('hidden');
   document.getElementById('quizEmailStep').classList.add('visible');
+  // Show result grid teaser in visual panel
+  showResultGrid();
+  document.getElementById('vizStepPill').textContent = 'Quase pronto!';
+  document.querySelectorAll('.viz-dot').forEach(d => d.classList.remove('active'));
+}
+
+function showResultGrid() {
+  document.getElementById('vizSlides').style.display = 'none';
+  document.getElementById('vizCaption').style.display = 'none';
+  const grid = document.getElementById('vizResultGrid');
+  grid.style.display = 'grid';
+  // Pick 4 images from user's answers
+  const picks = [
+    imageMap[2][answers[2] ?? 0].url,
+    imageMap[3][answers[3] ?? 0].url,
+    imageMap[0][answers[0] ?? 0].url,
+    imageMap[4][answers[4] ?? 0].url,
+  ];
+  ['vr1','vr2','vr3','vr4'].forEach((id, i) => {
+    const img = document.getElementById(id);
+    img.src = picks[i];
+    img.onload = () => img.classList.add('loaded');
+  });
 }
 
 function backToQuiz() {
   document.getElementById('quizEmailStep').classList.remove('visible');
   document.getElementById('quizMain').classList.remove('hidden');
+  document.getElementById('vizSlides').style.display = '';
+  const grid = document.getElementById('vizResultGrid');
+  grid.style.display = 'none';
+  renderQuiz();
 }
 
 function sendEmail() {
-  const email = document.getElementById('emailAddress').value.trim();
-  const name = document.getElementById('emailName').value.trim();
-  const phone = document.getElementById('emailPhone').value.trim();
+  const email   = document.getElementById('emailAddress').value.trim();
+  const name    = document.getElementById('emailName').value.trim();
+  const phone   = document.getElementById('emailPhone').value.trim();
   const privacy = document.getElementById('privacyCheck').checked;
   if (!email || !email.includes('@')) {
     document.getElementById('emailAddress').focus();
@@ -1734,22 +2027,23 @@ function sendEmail() {
   }
   if (!privacy) { alert('Por favor aceite a política de privacidade para continuar.'); return; }
 
-  // Build quiz answers summary
-  const answerSummary = quizData.map((q, i) => {
-    const sel = answers[i] !== undefined ? q.opts[answers[i]].text : 'N/A';
-    return q.q + ': ' + sel;
-  }).join('\n');
-
-  // Send via mailto (opens email client) + also use fetch to a mailto link
+  const answerSummary = quizData.map((q, i) => q.q + ': ' + (answers[i] !== undefined ? q.opts[answers[i]].text : 'N/A')).join('
+');
   const subject = encodeURIComponent('Novo Pedido de Orçamento - Quiz Website');
   const body = encodeURIComponent(
-    'Nome: ' + (name || 'Não indicado') + '\n' +
-    'Email: ' + email + '\n' +
-    'Telefone: ' + (phone || 'Não indicado') + '\n\n' +
-    'Respostas do Quiz:\n' + answerSummary + '\n\n' +
-    'Perfil: ' + quizProfile.title + ' - ' + quizProfile.sub
+    'Nome: ' + (name || 'Não indicado') + '
+' +
+    'Email: ' + email + '
+' +
+    'Telefone: ' + (phone || 'Não indicado') + '
+
+' +
+    'Respostas do Quiz:
+' + answerSummary + '
+
+' +
+    'Perfil: ' + quizProfile.title + ' — ' + quizProfile.sub
   );
-  // Open mailto silently
   const link = document.createElement('a');
   link.href = 'mailto:carpintariaandreo@gmail.com?subject=' + subject + '&body=' + body;
   link.style.display = 'none';
@@ -1757,12 +2051,20 @@ function sendEmail() {
   link.click();
   document.body.removeChild(link);
 
+  // WhatsApp link with summary
+  const waText = encodeURIComponent(
+    'Olá! Fiz o quiz no vosso site. Perfil: ' + quizProfile.title +
+    '. Nome: ' + (name || 'N/A') + '. Telefone: ' + (phone || 'N/A') +
+    '. Gostaria de agendar a visita gratuita!'
+  );
+  document.getElementById('waResultLink').href = 'https://wa.me/351960082729?text=' + waText;
+
   // Show result
-  document.getElementById('resultIcon').textContent = quizProfile.icon;
-  document.getElementById('resultTitle').textContent = quizProfile.title;
+  document.getElementById('resultIcon').textContent   = quizProfile.icon;
+  document.getElementById('resultTitle').textContent  = quizProfile.title;
   document.getElementById('resultSubtitle').textContent = quizProfile.sub;
-  document.getElementById('resultDesc').textContent = quizProfile.desc;
-  document.getElementById('sentEmail').textContent = email;
+  document.getElementById('resultDesc').textContent   = quizProfile.desc;
+  document.getElementById('sentEmail').textContent    = email;
   document.getElementById('quizEmailStep').classList.remove('visible');
   document.getElementById('quizResult').classList.add('visible');
 }
@@ -1773,12 +2075,16 @@ function quizRestart() {
   document.getElementById('quizEmailStep').classList.remove('visible');
   document.getElementById('quizResult').classList.remove('visible');
   document.getElementById('emailAddress').value = '';
-  document.getElementById('emailName').value = '';
-  document.getElementById('emailPhone').value = '';
+  document.getElementById('emailName').value    = '';
+  document.getElementById('emailPhone').value   = '';
   document.getElementById('privacyCheck').checked = false;
+  document.getElementById('vizSlides').style.display = '';
+  document.getElementById('vizResultGrid').style.display = 'none';
+  buildSlides();
   renderQuiz();
 }
 
+buildSlides();
 renderQuiz();
 </script>
 </body>
