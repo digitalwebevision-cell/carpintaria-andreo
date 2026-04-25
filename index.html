@@ -1296,7 +1296,7 @@
 
 <!-- SPLASH -->
 <div id="splash">
-  <img src="LOGO_PLACEHOLDER" class="splash-logo" alt="CA Mobiliário Exclusivo">
+  <img src="https://i.imgur.com/pcxNTfc.jpeg" class="splash-logo" alt="CA Mobiliário Exclusivo">
   <div class="splash-bar"><div class="splash-bar-fill"></div></div>
   <p class="splash-tagline">Mobiliário Exclusivo</p>
 </div>
@@ -1304,7 +1304,7 @@
 <!-- NAV -->
 <nav id="navbar">
   <a href="#" class="nav-logo">
-    <img src="LOGO_PLACEHOLDER" class="nav-logo-img" alt="CA">
+    <img src="https://i.imgur.com/pcxNTfc.jpeg" class="nav-logo-img" alt="CA">
     <span class="nav-logo-text">
       Carpintaria Andreo
       <span class="nav-logo-sub">Mobiliário Exclusivo</span>
@@ -1681,7 +1681,7 @@
 <footer>
   <div class="footer-grid">
     <div>
-      <img src="LOGO_PLACEHOLDER" class="footer-logo-img" alt="CA Mobiliário Exclusivo">
+      <img src="https://i.imgur.com/pcxNTfc.jpeg" class="footer-logo-img" alt="CA Mobiliário Exclusivo">
       <p class="footer-tagline">Especialistas em cozinhas e roupeiros por medida. Qualidade, design e dedicação em cada projeto desde 2008.</p>
       <div class="footer-socials">
         <a href="https://www.instagram.com/carpintariaandreo/" target="_blank" class="social-btn"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1112.63 8 4 4 0 0116 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg></a>
@@ -1704,9 +1704,9 @@
 </a>
 
 <script>
-// Inject logo base64
+try {
 const LOGO_SRC = 'https://i.imgur.com/pcxNTfc.jpeg';
-document.querySelectorAll('img[src="LOGO_PLACEHOLDER"]').forEach(img => img.src = LOGO_SRC);
+document.querySelectorAll('img[src="https://i.imgur.com/pcxNTfc.jpeg"]').forEach(img => img.src = LOGO_SRC);
 
 // Splash
 setTimeout(() => {
@@ -1734,30 +1734,15 @@ const observer = new IntersectionObserver(entries => {
 }, { threshold: 0.08 });
 revealEls.forEach(r => observer.observe(r));
 
-// Stagger children of .stagger that also have .reveal
-document.querySelectorAll('.stagger').forEach(parent => {
-  observer.observe(parent);
-  const children = parent.children;
-  Array.from(children).forEach((child, i) => {
-    child.style.opacity = '0';
-    child.style.transform = 'translateY(22px)';
-    child.style.transition = `opacity .7s ease ${i * 0.12}s, transform .7s ease ${i * 0.12}s`;
-  });
-});
-
-const staggerParentObs = new IntersectionObserver(entries => {
-  entries.forEach(e => {
-    if (e.isIntersecting) {
-      Array.from(e.target.children).forEach(child => {
-        child.style.opacity = '1';
-        child.style.transform = 'translateY(0)';
-      });
-    }
-  });
-}, { threshold: 0.05 });
-document.querySelectorAll('.stagger').forEach(p => staggerParentObs.observe(p));
 
 // Animated number counters
+
+
+// Animated counters
+const statEls = document.querySelectorAll('.stat-num');
+const statTargets = [400, 15, 100];
+const statSuffixes = ['+', '+', '%'];
+let countersRan = false;
 function animateCounter(el, target, suffix, duration) {
   let start = 0;
   const step = target / (duration / 16);
@@ -1767,23 +1752,18 @@ function animateCounter(el, target, suffix, duration) {
     if (start >= target) clearInterval(timer);
   }, 16);
 }
-
-// Trigger counters when hero stats visible
-const statEls = document.querySelectorAll('.stat-num');
-const statTargets = [400, 15, 100];
-const statSuffixes = ['+', '+', '%'];
-let countersRan = false;
-const counterObs = new IntersectionObserver(entries => {
-  entries.forEach(e => {
-    if (e.isIntersecting && !countersRan) {
-      countersRan = true;
-      statEls.forEach((el, i) => {
-        animateCounter(el, statTargets[i], statSuffixes[i], 1800);
-      });
-    }
-  });
-}, { threshold: 0.5 });
-if (statEls.length) counterObs.observe(statEls[0].closest('.hero-stats') || document.body);
+const heroStats = document.querySelector('.hero-stats');
+if (heroStats && statEls.length) {
+  const counterObs = new IntersectionObserver(entries => {
+    entries.forEach(e => {
+      if (e.isIntersecting && !countersRan) {
+        countersRan = true;
+        statEls.forEach((el, i) => animateCounter(el, statTargets[i], statSuffixes[i], 1800));
+      }
+    });
+  }, { threshold: 0.5 });
+  counterObs.observe(heroStats);
+}
 
 // Hamburger toggle update
 function toggleMenu() {
@@ -2086,6 +2066,7 @@ function quizRestart() {
 
 buildSlides();
 renderQuiz();
+} catch(e) { console.error("Site error:", e); }
 </script>
 </body>
 </html>
