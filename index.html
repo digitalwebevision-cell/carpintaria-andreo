@@ -2011,50 +2011,40 @@ function backToQuiz() {
 }
 
 function sendEmail() {
-  const email   = document.getElementById('emailAddress').value.trim();
-  const name    = document.getElementById('emailName').value.trim();
-  const phone   = document.getElementById('emailPhone').value.trim();
-  const privacy = document.getElementById('privacyCheck').checked;
+  var email   = document.getElementById('emailAddress').value.trim();
+  var name    = document.getElementById('emailName').value.trim();
+  var phone   = document.getElementById('emailPhone').value.trim();
+  var privacy = document.getElementById('privacyCheck').checked;
   if (!email || !email.includes('@')) {
     document.getElementById('emailAddress').focus();
     document.getElementById('emailAddress').style.borderColor = '#ff6b6b';
     return;
   }
-  if (!privacy) { alert('Por favor aceite a política de privacidade para continuar.'); return; }
-
-  const answerSummary = quizData.map((q, i) => q.q + ': ' + (answers[i] !== undefined ? q.opts[answers[i]].text : 'N/A')).join('
-');
-  const subject = encodeURIComponent('Novo Pedido de Orçamento - Quiz Website');
-  const body = encodeURIComponent(
-    'Nome: ' + (name || 'Não indicado') + '
-' +
-    'Email: ' + email + '
-' +
-    'Telefone: ' + (phone || 'Não indicado') + '
-
-' +
-    'Respostas do Quiz:
-' + answerSummary + '
-
-' +
-    'Perfil: ' + quizProfile.title + ' — ' + quizProfile.sub
-  );
-  const link = document.createElement('a');
+  if (!privacy) { alert('Por favor aceite a politica de privacidade.'); return; }
+  var lines = quizData.map(function(q, i) {
+    return q.q + ': ' + (answers[i] !== undefined ? q.opts[answers[i]].text : 'N/A');
+  });
+  var answerSummary = lines.join('\n');
+  var subject = encodeURIComponent('Novo Pedido de Orcamento - Quiz Website');
+  var bodyText = 'Nome: ' + (name || 'Nao indicado') + '\n'
+    + 'Email: ' + email + '\n'
+    + 'Telefone: ' + (phone || 'Nao indicado') + '\n\n'
+    + 'Respostas do Quiz:\n' + answerSummary + '\n\n'
+    + 'Perfil: ' + quizProfile.title + ' - ' + quizProfile.sub;
+  var body = encodeURIComponent(bodyText);
+  var link = document.createElement('a');
   link.href = 'mailto:carpintariaandreo@gmail.com?subject=' + subject + '&body=' + body;
   link.style.display = 'none';
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
-
-  // WhatsApp link with summary
-  const waText = encodeURIComponent(
-    'Olá! Fiz o quiz no vosso site. Perfil: ' + quizProfile.title +
-    '. Nome: ' + (name || 'N/A') + '. Telefone: ' + (phone || 'N/A') +
-    '. Gostaria de agendar a visita gratuita!'
+  var waText = encodeURIComponent(
+    'Ola! Fiz o quiz no vosso site. Perfil: ' + quizProfile.title
+    + '. Nome: ' + (name || 'N/A')
+    + '. Telefone: ' + (phone || 'N/A')
+    + '. Gostaria de agendar a visita gratuita!'
   );
   document.getElementById('waResultLink').href = 'https://wa.me/351960082729?text=' + waText;
-
-  // Show result
   document.getElementById('resultIcon').textContent   = quizProfile.icon;
   document.getElementById('resultTitle').textContent  = quizProfile.title;
   document.getElementById('resultSubtitle').textContent = quizProfile.sub;
