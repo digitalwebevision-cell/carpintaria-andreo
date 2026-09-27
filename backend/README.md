@@ -70,6 +70,7 @@ npm run db:migrate
 | `clients` | nome, email (único), telefone, observações |
 | `projects` | nome, tipo, estado, orçamento estimado, `client_id`, e o **estado completo do projeto 3D** em `dados` (JSON) |
 | `project_submissions` | cada envio à Novari: resumo em texto, especificações, valor aproximado e estado do envio |
+| `submission_views` | planificação 3D de cada envio: imagens das vistas (perspetiva, planta, frontal, lateral) |
 
 Um cliente tem vários projetos (`projects.client_id`). Os dados do cliente não são
 copiados para os projetos. Se o cliente for excluído, os projetos continuam a existir, sem
@@ -99,19 +100,20 @@ procura a API em `http://localhost:3000/api`.
 ### Como o frontend usa a API
 
 O ficheiro `novariApi.js` (na raiz do site) liga o planejador ao backend **apenas se a API
-responder**. Sem backend (por exemplo no GitHub Pages), tudo funciona como antes:
-`localStorage`, `mailto:` e o assistente local.
+responder**. Sem backend, tudo continua a funcionar: `localStorage`, envio pelo formulário e
+o assistente local. Em `localhost` usa sempre a API local; no site publicado usa
+`window.NOVARI_API_URL`, definido em `configurador.html`.
 
 | Ação no planejador | Com backend |
 |---|---|
 | **Guardar projeto** | `POST /api/projects` (depois `PUT`). O ID fica no endereço (`?projeto=<id>`) e no navegador |
 | Qualquer alteração depois de guardar | Gravação automática com *debounce* de 3 s (agrupa alterações, nunca envia um pedido por cada movimento) |
 | Abrir `configurador.html?projeto=<id>` | `GET /api/projects/:id`, o estado é reconstruído e o Babylon.js volta a renderizar |
-| **Enviar projeto** | `POST /api/projects/:id/send` regista o pedido. O email do cliente (`mailto:`) continua a abrir enquanto o envio automático não estiver configurado |
+| **Enviar projeto** | `POST /api/projects/:id/send` regista o pedido e o servidor envia o email com a ficha. Sem API ou sem email configurado, o planejador envia pelo FormSubmit com a imagem 3D em anexo |
 | Assistente | Se `AI_API_KEY` estiver definido, as mensagens vão para `POST /api/ai`; senão continua o interpretador local |
 
-Em produção, com o site e a API em domínios diferentes, defina antes dos scripts:
-`<script>window.NOVARI_API_URL = 'https://api.exemplo.com/api';</script>`
+Se a falha for só temporária (por exemplo, a API gratuita do Render a "acordar", até
+~50 s), o planejador volta a verificar a API no envio seguinte.
 
 ---
 
@@ -181,6 +183,8 @@ Erro (nunca inclui stack traces nem detalhes internos):
 | `GET` | `/api/projects/:id/quote` | Orçamento aproximado do projeto guardado |
 | `POST` | `/api/projects/:id/send` | Enviar à Novari |
 | `GET` | `/api/projects/:id/submissions` | Histórico de envios |
+| `GET` | `/api/submissions/:id/ficha` | Ficha do marceneiro (HTML): medidas, pontos técnicos, vistas 3D e link para o 3D |
+| `GET` | `/api/submissions/:id/vistas/:ordem` | Imagem de uma vista 3D do envio |
 
 O projeto usa **o mesmo formato do estado do planejador** (`projectState.js`), com os
 metadados `nome` e `clienteId`. Todas as medidas estão em cm, com a origem no centro do chão
@@ -324,20 +328,30 @@ curl -X POST http://localhost:3000/api/quotes/estimate -H "Content-Type: applica
 ```json
 {
   "cliente": { "nome": "Maria Silva", "email": "maria@exemplo.com", "telefone": "(11) 98888-7777" },
-  "observacoes": "Prefiro contacto à tarde."
+  "observacoes": "Prefiro contacto à tarde.",
+  "vistas": [{ "nome": "perspetiva", "imagem": "data:image/jpeg;base64,…" }]
 }
 ```
+
+`vistas` (opcional) é a planificação 3D capturada pelo planejador: até 4 imagens
+(`perspetiva`, `planta`, `frontal`, `lateral`), JPEG/PNG/WebP até 2,5 MB cada.
 
 O servidor:
 
 1. valida o projeto (tem de ter módulos) e o contacto (email ou telefone);
 2. encontra o cliente pelo email ou cria-o, sem duplicar, e associa-o ao projeto;
 3. gera um resumo em texto, as especificações técnicas (módulos, medidas, componentes, pontos técnicos) e o valor aproximado;
-4. regista o envio em `project_submissions`, com destino `novarimobiliarioexclusivo@gmail.com`;
-5. chama `services/notificationService.js`. **O envio automático de email ainda não está
-   configurado**, por isso a resposta traz `"emailEnviado": false` e o planejador continua a
-   abrir o email do cliente. Para ativar o envio, implemente `enviarEmail()` nesse ficheiro
-   (SMTP/nodemailer, Resend, SES…).
+4. regista o envio em `project_submissions`, com destino `novarimobiliarioexclusivo@gmail.com`,
+   e as vistas em `submission_views`;
+5. acrescenta ao resumo os links para o marceneiro: a **ficha técnica**
+   (`/api/submissions/:id/ficha` — medidas de cada módulo, pontos de água/gás/eletricidade e
+   vistas 3D) e o **3D interativo** (`configurador.html?projeto=…&modo=leitura`, só para ver:
+   não grava alterações). Os links usam `PUBLIC_URL` e `SITE_URL` do `.env`;
+6. envia o email à Novari (`services/notificationService.js`) com a ficha no corpo: as vistas
+   3D embutidas na mensagem, as medidas, os pontos técnicos e os links, com *reply-to* para o
+   cliente. Usa o Resend (`RESEND_API_KEY`) ou SMTP (`SMTP_HOST`…). Sem nenhum, a resposta traz
+   `"emailEnviado": false` e o planejador envia pelo formulário alternativo (FormSubmit, com a
+   imagem 3D em anexo).
 
 ### Catálogo
 
@@ -430,13 +444,38 @@ backend/
 └── tests/                 testes de ponta a ponta (node:test)
 ```
 
-## 8. Ainda não implementado (fora do âmbito desta fase)
+## 8. Publicar (Render + Neon, gratuito)
 
-Login e autenticação, painel administrativo, pagamentos, deploy em cloud, domínio, Docker,
-CI/CD, funcionários e permissões, envio automático de email, e catálogo editável no banco
-(a arquitetura já está preparada — ver secção Catálogo).
+O `render.yaml` na raiz do repositório descreve o serviço. Passo a passo:
 
-> Sem autenticação, qualquer pessoa que conheça o ID (UUID) de um projeto consegue lê-lo e
-> alterá-lo, e as rotas de listagem mostram todos os projetos e clientes. Isto serve para o
-> desenvolvimento local, mas **antes de publicar a API na internet** é preciso proteger as
-> rotas de listagem e de clientes (por exemplo, com o login do painel administrativo).
+1. **Banco (Neon):** crie uma conta em [neon.tech](https://neon.tech), crie um projeto e
+   copie a *connection string* (`postgresql://…?sslmode=require`).
+2. **Email (Resend):** crie uma conta em [resend.com](https://resend.com) **com o email
+   `novarimobiliarioexclusivo@gmail.com`** e crie uma *API key*. Sem verificar domínio, o
+   Resend só envia para o email da própria conta, que é o destinatário dos projetos.
+   Para enviar de `@novarimobiliarioexclusivo.com`, verifique o domínio no Resend e defina
+   `EMAIL_FROM`.
+3. **API (Render):** em [render.com](https://render.com) → *New* → *Blueprint* → escolha este
+   repositório. Preencha `DATABASE_URL` (Neon) e `RESEND_API_KEY`; `AI_API_KEY` é opcional.
+   As migrações correm sozinhas no arranque.
+4. Confirme `https://novari-planejador-api.onrender.com/api/health` →
+   `"bancoDeDados": "ok"` e `"email": { "configurado": true }`. Se o Render der outro
+   endereço ao serviço, altere `NOVARI_API_URL` em `configurador.html`.
+
+Notas do plano gratuito do Render: a API adormece após 15 min sem uso e demora ~50 s a
+acordar (o planejador usa o formulário alternativo se ela não responder a tempo), e as
+portas SMTP estão bloqueadas (por isso o Resend). Com um plano pago ou um VPS, o Gmail por
+SMTP também funciona (`SMTP_*` no `.env`).
+
+**Administração:** listar projetos e clientes, ver o histórico de envios e apagar exigem
+`Authorization: Bearer <ADMIN_TOKEN>` (o Render gera a chave; veja-a no painel). Em produção,
+sem `ADMIN_TOKEN`, essas rotas ficam fechadas. O planejador não precisa da chave.
+
+## 9. Ainda não implementado (fora do âmbito desta fase)
+
+Login e painel administrativo, pagamentos, CI/CD, funcionários e permissões, e catálogo
+editável no banco (a arquitetura já está preparada — ver secção Catálogo).
+
+> Quem conhece o ID (UUID) de um projeto consegue lê-lo e alterá-lo; quem tem o link de uma
+> ficha (`/api/submissions/:id/ficha`) vê-a. Os IDs são aleatórios e não aparecem em listagens
+> públicas.

@@ -11,7 +11,10 @@ function criarApp() {
   app.disable('x-powered-by');
   app.set('trust proxy', 'loopback');
 
-  app.use('/api', requestLogger, corsApi, express.json({ limit: '2mb' }));
+  app.use('/api', requestLogger, corsApi);
+  // O envio leva as vistas 3D (imagens) do projeto: limite maior só nesta rota
+  app.post('/api/projects/:id/send', express.json({ limit: '14mb' }));
+  app.use('/api', express.json({ limit: '2mb' }));
   app.use('/api', rotas);
   app.use('/api', rotaNaoEncontrada);
 

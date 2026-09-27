@@ -815,13 +815,17 @@
       })
     });
     if (!resp.ok) throw new Error('IA respondeu HTTP ' + resp.status);
-    const data = await resp.json();
+    const json = await resp.json();
+    // Aceita também o formato do backend Novari: { success, data: { message, actions, options, completed } }
+    const data = json && json.data ? json.data : json;
+    const comandos = Array.isArray(data.comandos) ? data.comandos : data.actions;
+    const opcoes = Array.isArray(data.opcoes) ? data.opcoes : data.options;
     return {
       origem: 'api',
-      resposta: String(data.resposta || ''),
-      comandos: Array.isArray(data.comandos) ? data.comandos : [],
-      opcoes: Array.isArray(data.opcoes) ? data.opcoes : null,
-      concluida: !!data.concluida,
+      resposta: String(data.resposta || data.message || ''),
+      comandos: Array.isArray(comandos) ? comandos : [],
+      opcoes: Array.isArray(opcoes) && opcoes.length ? opcoes : null,
+      concluida: !!(data.concluida || data.completed),
       ui: []
     };
   }

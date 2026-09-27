@@ -1,5 +1,6 @@
 .env
 .env.*
+!.env.example
 node_modules/
 .vscode/
 *.log
@@ -11,6 +12,7 @@ Thumbs.db
 *.local
 *.sqlite
 *.sqlite3
+*.sqlite-*
 *.db
 *.bak
 *.backup

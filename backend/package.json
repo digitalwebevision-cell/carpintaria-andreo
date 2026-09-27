@@ -19,6 +19,8 @@
     "express": "^5.2.1",
     "express-rate-limit": "^8.7.0",
     "knex": "^3.3.0",
+    "nodemailer": "^7.0.13",
+    "pg": "^8.23.0",
     "zod": "^3.25.76"
   },
   "devDependencies": {
