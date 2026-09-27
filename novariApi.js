@@ -3,7 +3,9 @@
    Quando a API da Novari está disponível:
      - guarda e recupera projetos (GET/POST/PUT /api/projects)
      - guarda automaticamente as alterações (com debounce)
-     - envia o projeto à Novari (POST /api/projects/:id/send)
+     - envia o projeto à Novari (POST /api/projects/:id/send), com as
+       vistas 3D para a ficha do marceneiro
+     - ?modo=leitura: abre um projeto enviado só para ver (sem gravar)
      - liga o assistente à IA do servidor (POST /api/ai)
    Quando não está (ex.: site estático), o planejador continua
    a funcionar exatamente como antes (localStorage + mailto).
@@ -14,6 +16,10 @@
 
   const CHAVE_ID = 'novari-project-id';
   const PARAM_URL = 'projeto';
+  // ?modo=leitura → link enviado ao marceneiro: abre o projeto só para ver
+  const MODO_LEITURA = (() => {
+    try { return new URL(global.location.href).searchParams.get('modo') === 'leitura'; } catch (e) { return false; }
+  })();
   const ATRASO_AUTOSAVE = 3000;
 
   let base = null;
@@ -69,12 +75,12 @@
     return verificacao;
   }
 
-  async function pedido(metodo, caminho, corpo) {
+  async function pedido(metodo, caminho, corpo, tempoLimite) {
     const r = await fetch(base + caminho, {
       method: metodo,
       headers: corpo === undefined ? {} : { 'Content-Type': 'application/json' },
       body: corpo === undefined ? undefined : JSON.stringify(corpo),
-      signal: comTempoLimite(15000)
+      signal: comTempoLimite(tempoLimite || 15000)
     });
     const json = await r.json().catch(() => null);
     if (!r.ok || !json || !json.success) {
@@ -89,6 +95,7 @@
   // O ID fica no localStorage e no endereço (?projeto=…) para poder reabrir/partilhar
   function definirId(id) {
     projetoId = id;
+    if (MODO_LEITURA) return; // não se apropria do projeto do cliente
     armazenamento.gravar(id);
     try {
       const url = new URL(global.location.href);
@@ -109,10 +116,11 @@
       const daUrl = new URL(global.location.href).searchParams.get(PARAM_URL);
       if (daUrl) return daUrl;
     } catch (e) { /* ignora */ }
-    return armazenamento.ler();
+    return MODO_LEITURA ? null : armazenamento.ler();
   }
 
   async function guardar(projeto) {
+    if (MODO_LEITURA) throw new Error('Projeto aberto só para visualização.');
     if (!(await disponivel())) throw new Error('Servidor indisponível.');
     const corpo = JSON.parse(JSON.stringify(projeto));
     let r = null;
@@ -188,9 +196,14 @@
     });
   }
 
-  async function enviar(projeto, cliente, observacoes) {
+  // vistas: imagens do 3D (planificação) para o marceneiro — [{ nome, titulo, imagem: dataURL }]
+  async function enviar(projeto, cliente, observacoes, vistas) {
     await guardar(projeto);
-    return pedido('POST', '/projects/' + projetoId + '/send', { cliente, observacoes: observacoes || undefined });
+    return pedido('POST', '/projects/' + projetoId + '/send', {
+      cliente,
+      observacoes: observacoes || undefined,
+      vistas: vistas && vistas.length ? vistas : undefined
+    }, 60000);
   }
 
   /**
@@ -202,7 +215,7 @@
     if (!ok) return false;
     // IA pelo servidor (a chave nunca vem para o navegador)
     if (iaConfigurada && !global.NOVARI_AI_CONFIG) global.NOVARI_AI_CONFIG = { endpoint: base + '/ai' };
-    ativarAutosave(opcoes.Store);
+    if (!MODO_LEITURA) ativarAutosave(opcoes.Store);
     const p = await recuperar(opcoes.Store);
     if (p && opcoes.aoCarregar) opcoes.aoCarregar(p);
     return true;
@@ -214,6 +227,7 @@
     guardar,
     enviar,
     recuperar,
+    modoLeitura: MODO_LEITURA,
     get projetoId() { return projetoId; }
   };
 })(window);

@@ -28,11 +28,17 @@ const ORIGENS_DEV = [
   'http://127.0.0.1:8080'
 ];
 
+const PORT = inteiro(env.PORT, 3000);
+const semBarraFinal = (u) => String(u).replace(/\/+$/, '');
+
 const config = {
   env: NODE_ENV,
   isProduction: NODE_ENV === 'production',
   isTest: NODE_ENV === 'test',
-  port: inteiro(env.PORT, 3000),
+  port: PORT,
+  // Endereços públicos usados nos links enviados ao marceneiro (ficha e 3D)
+  publicUrl: semBarraFinal(env.PUBLIC_URL || `http://localhost:${PORT}`),
+  siteUrl: semBarraFinal(env.SITE_URL || env.PUBLIC_URL || `http://localhost:${PORT}`),
   backendDir: BACKEND_DIR,
   // Pasta do site: os ficheiros do planejador são partilhados com o backend
   frontendDir: path.resolve(BACKEND_DIR, env.FRONTEND_DIR || '..'),

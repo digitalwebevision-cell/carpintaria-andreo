@@ -21,6 +21,7 @@ router.get('/health', async (req, res) => {
 });
 
 router.use('/projects', require('./projects'));
+router.use('/submissions', require('./submissions'));
 router.use('/clients', require('./clients'));
 router.use('/quotes', require('./quotes'));
 router.use('/catalog', require('./catalog'));

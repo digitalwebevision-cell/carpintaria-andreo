@@ -219,6 +219,55 @@ test('envio do projeto para a Novari', async () => {
   assert.equal(projeto.body.data.clienteId, r.body.data.cliente.id);
 });
 
+test('envio leva a planificação 3D e a ficha do marceneiro', async () => {
+  const p = await api('POST', '/api/projects', projetoDoPlanejador());
+  const id = p.body.data.id;
+  const cliente = { nome: 'Ana <b>', telefone: '11 98888-7777' };
+  // PNG 1×1 válido
+  const png = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+  const vistas = [
+    { nome: 'perspetiva', titulo: 'Perspetiva', imagem: `data:image/png;base64,${png}` },
+    { nome: 'planta', imagem: `data:image/png;base64,${png}` }
+  ];
+
+  // imagem que não é imagem → recusada
+  const falsa = await api('POST', `/api/projects/${id}/send`, {
+    cliente,
+    vistas: [{ nome: 'planta', imagem: `data:image/png;base64,${Buffer.from('<script>').toString('base64')}` }]
+  });
+  assert.equal(falsa.status, 422);
+  assert.equal(falsa.body.error.details[0].campo, 'vistas.0.imagem');
+
+  const r = await api('POST', `/api/projects/${id}/send`, { cliente, vistas });
+  assert.equal(r.status, 201, r.texto);
+  const envio = r.body.data;
+  assert.equal(envio.vistas, 2);
+  assert.match(envio.links.ficha, new RegExp(`/api/submissions/${envio.envio.id}/ficha$`));
+  assert.match(envio.links.visualizacao3d, new RegExp(`configurador\\.html\\?projeto=${id}&modo=leitura$`));
+  assert.match(envio.resumo, /PLANIFICAÇÃO 3D E MEDIDAS/);
+  assert.ok(envio.resumo.includes(envio.links.ficha));
+
+  const ficha = await fetch(`${base}/api/submissions/${envio.envio.id}/ficha`);
+  assert.equal(ficha.status, 200);
+  assert.match(ficha.headers.get('content-type'), /text\/html/);
+  assert.match(ficha.headers.get('content-security-policy'), /default-src 'none'/);
+  const html = await ficha.text();
+  const modulo = p.body.data.modulos[0];
+  assert.ok(html.includes(modulo.nome));
+  assert.ok(html.includes(`<td class="n">${modulo.dimensoes.largura}</td>`));
+  assert.ok(html.includes('src="vistas/1"'));
+  assert.ok(html.includes('Ana &lt;b&gt;'));
+  assert.ok(!html.includes('Ana <b>'));
+
+  const img = await fetch(`${base}/api/submissions/${envio.envio.id}/vistas/0`);
+  assert.equal(img.status, 200);
+  assert.equal(img.headers.get('content-type'), 'image/png');
+  assert.deepEqual(Buffer.from(await img.arrayBuffer()), Buffer.from(png, 'base64'));
+
+  assert.equal((await fetch(`${base}/api/submissions/${envio.envio.id}/vistas/9`)).status, 404);
+  assert.equal((await fetch(`${base}/api/submissions/nao-existe/ficha`)).status, 404);
+});
+
 test('IA: sem chave responde 503 e valida o pedido', async () => {
   const semMensagem = await api('POST', '/api/ai', { project: projetoDoPlanejador() });
   assert.equal(semMensagem.status, 422);

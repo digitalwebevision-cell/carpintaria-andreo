@@ -440,7 +440,58 @@
     showToast(local ? 'Projeto guardado localmente.' : 'Não foi possível guardar neste navegador.');
   }
 
+  // Planificação 3D para o marceneiro: vistas do projeto capturadas do motor
+  function capturarVistas() {
+    if (!motor || !motor.capturarVistas) return [];
+    try {
+      return motor.capturarVistas();
+    } catch (e) {
+      console.warn('[Novari] não foi possível capturar as vistas 3D', e);
+      return [];
+    }
+  }
+
+  // Sem servidor não há onde guardar as imagens: junta as vistas numa só
+  // imagem (2 × 2) e descarrega-a para o cliente anexar ao email.
+  async function descarregarPlanificacao(vistas) {
+    if (!vistas.length) return false;
+    const imagens = await Promise.all(vistas.map((v) => new Promise((ok, falha) => {
+      const img = new Image();
+      img.onload = () => ok(img);
+      img.onerror = falha;
+      img.src = v.imagem;
+    })));
+    const w = imagens[0].width;
+    const h = imagens[0].height;
+    const legenda = 40;
+    const colunas = Math.min(2, imagens.length);
+    const linhas = Math.ceil(imagens.length / colunas);
+    const canvas = document.createElement('canvas');
+    canvas.width = w * colunas;
+    canvas.height = (h + legenda) * linhas;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.font = '600 20px system-ui, sans-serif';
+    ctx.textBaseline = 'middle';
+    imagens.forEach((img, i) => {
+      const x = (i % colunas) * w;
+      const y = Math.floor(i / colunas) * (h + legenda);
+      ctx.fillStyle = '#2b2118';
+      ctx.fillText(vistas[i].titulo, x + 16, y + legenda / 2);
+      ctx.drawImage(img, x, y + legenda, w, h);
+    });
+    const link = document.createElement('a');
+    link.href = canvas.toDataURL('image/jpeg', 0.9);
+    link.download = 'projeto-novari-planificacao-3d.jpg';
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    return true;
+  }
+
   async function sendProjectByEmail() {
+    const vistas = capturarVistas();
     // Com o backend disponível, o projeto fica registado na Novari antes de abrir o email
     if (window.NovariAPI && (await window.NovariAPI.disponivel())) {
       const texto = (id) => ($(id).value || '').trim();
@@ -448,21 +499,36 @@
         const r = await window.NovariAPI.enviar(
           Store.obter(),
           { nome: texto('clientName') || 'Cliente', email: texto('clientEmail') || null, telefone: texto('clientPhone') || null },
-          texto('clientNotes')
+          texto('clientNotes'),
+          vistas
         );
         if (r.emailEnviado) {
           showToast('Projeto enviado para a Novari.');
           return;
         }
+        // o resumo do servidor já traz os links da ficha (medidas + 3D)
+        abrirEmail(r.resumo);
+        return;
       } catch (e) {
         console.warn('[Novari] não foi possível registar o envio no servidor:', e.message);
       }
     }
     // O email do cliente continua a ser aberto enquanto o envio automático não estiver configurado
-    sendProjectByMailto();
+    let anexo = false;
+    try {
+      anexo = await descarregarPlanificacao(vistas);
+    } catch (e) {
+      console.warn('[Novari] não foi possível preparar a imagem da planificação 3D', e);
+    }
+    sendProjectByMailto(anexo);
   }
 
-  function sendProjectByMailto() {
+  function abrirEmail(corpo, mensagem) {
+    window.location.href = `mailto:novarimobiliarioexclusivo@gmail.com?subject=${encodeURIComponent('Novo projeto personalizado — Novari')}&body=${encodeURIComponent(corpo)}`;
+    showToast(mensagem || 'Email preparado para envio.');
+  }
+
+  function sendProjectByMailto(comAnexo) {
     const p = Store.obter();
     const name = $('clientName').value.trim() || 'Cliente';
     const email = $('clientEmail').value.trim() || 'Não informado';
@@ -480,11 +546,11 @@
       `Acabamento: ${p.acabamento}`,
       `Estilo: ${(C.ESTILOS[p.estilo] || C.ESTILOS.moderno).nome}`, '',
       'CONFIGURAÇÃO', modulos || 'Nenhum módulo definido.', '',
+      ...(comAnexo ? ['PLANIFICAÇÃO 3D', 'Em anexo: projeto-novari-planificacao-3d.jpg (perspetiva, planta, frontal e lateral).', ''] : []),
       'VALOR APROXIMADO (não é orçamento final)', C.formatarMoeda(orc.total), '',
       'OBSERVAÇÕES', [p.observacoes, notes].filter(Boolean).join(' ')
     ].join('\n');
-    window.location.href = `mailto:novarimobiliarioexclusivo@gmail.com?subject=${encodeURIComponent('Novo projeto personalizado — Novari')}&body=${encodeURIComponent(body)}`;
-    showToast('Email preparado para envio.');
+    abrirEmail(body, comAnexo ? 'Anexe ao email a imagem 3D que foi descarregada.' : null);
   }
 
   // ---------------------------------------------------------------
@@ -606,11 +672,16 @@
 
     // Backend opcional: recupera o projeto guardado e ativa a gravação automática
     if (window.NovariAPI) {
+      const leitura = window.NovariAPI.modoLeitura;
+      if (leitura) {
+        // link do marceneiro: só visualizar, sem guardar nem enviar
+        document.querySelectorAll('.client-form, #saveProjectBtn, #resetProjectBtn').forEach((el) => { el.style.display = 'none'; });
+      }
       window.NovariAPI.iniciar({
         Store,
         aoCarregar: () => {
           if (motor) motor.enquadrar(true);
-          showToast('Projeto recuperado.');
+          showToast(leitura ? 'Projeto do cliente aberto só para visualização.' : 'Projeto recuperado.');
         }
       }).catch((e) => console.warn('[Novari] backend indisponível', e));
     }

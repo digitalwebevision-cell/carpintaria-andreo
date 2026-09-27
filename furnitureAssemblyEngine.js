@@ -1307,6 +1307,43 @@
       else animarCamera(-Math.PI / 2 - 0.45, 1.12, raio, alvo, rapido);
     }
 
+    // Planificação 3D para o marceneiro: fotografa o projeto de vários ângulos
+    // (JPEG com fundo claro, no máx. 1280 px de largura) e repõe a câmera.
+    const VISTAS = [
+      { nome: 'perspetiva', preset: 'initial', titulo: 'Perspetiva' },
+      { nome: 'planta', preset: 'top', titulo: 'Planta (vista de cima)' },
+      { nome: 'frontal', preset: 'front', titulo: 'Vista frontal' },
+      { nome: 'lateral', preset: 'side', titulo: 'Vista lateral' }
+    ];
+    function capturarVistas(larguraMax) {
+      const antes = { a: camera.alpha, b: camera.beta, r: camera.radius, alvo: camera.target.clone() };
+      const escala = Math.min(1, (larguraMax || 1280) / canvas.width);
+      const saida = document.createElement('canvas');
+      saida.width = Math.round(canvas.width * escala);
+      saida.height = Math.round(canvas.height * escala);
+      const ctx = saida.getContext('2d');
+      const vistas = [];
+      // o contorno de seleção não faz parte do projeto
+      const selecao = scene.meshes.filter((m) => (m.name === 'selecao' || m.name === 'selecao-base') && m.isEnabled());
+      selecao.forEach((m) => m.setEnabled(false));
+      try {
+        VISTAS.forEach((v) => {
+          presetCamera(v.preset, true);
+          scene.render();
+          ctx.fillStyle = '#f4efe8';
+          ctx.fillRect(0, 0, saida.width, saida.height);
+          ctx.drawImage(canvas, 0, 0, saida.width, saida.height);
+          vistas.push({ nome: v.nome, titulo: v.titulo, imagem: saida.toDataURL('image/jpeg', 0.85) });
+        });
+      } finally {
+        selecao.forEach((m) => m.setEnabled(true));
+        transicao = null;
+        aplicarCamera(antes.a, antes.b, antes.r, antes.alvo);
+        scene.render();
+      }
+      return vistas;
+    }
+
     // -------------------------------------------------------------
     // Ciclo de vida
     // -------------------------------------------------------------
@@ -1323,6 +1360,7 @@
       render,
       camera: presetCamera,
       enquadrar: (rapido) => presetCamera('fit', rapido),
+      capturarVistas,
       alternarPortas: (id, forcar) => alternarTodas(id, 'portas', forcar),
       alternarGavetas: (id, forcar) => alternarTodas(id, 'gavetas', forcar),
       abrirTudo(forcar) {

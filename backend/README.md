@@ -70,6 +70,7 @@ npm run db:migrate
 | `clients` | nome, email (único), telefone, observações |
 | `projects` | nome, tipo, estado, orçamento estimado, `client_id`, e o **estado completo do projeto 3D** em `dados` (JSON) |
 | `project_submissions` | cada envio à Novari: resumo em texto, especificações, valor aproximado e estado do envio |
+| `submission_views` | planificação 3D de cada envio: imagens das vistas (perspetiva, planta, frontal, lateral) |
 
 Um cliente tem vários projetos (`projects.client_id`). Os dados do cliente não são
 copiados para os projetos. Se o cliente for excluído, os projetos continuam a existir, sem
@@ -181,6 +182,8 @@ Erro (nunca inclui stack traces nem detalhes internos):
 | `GET` | `/api/projects/:id/quote` | Orçamento aproximado do projeto guardado |
 | `POST` | `/api/projects/:id/send` | Enviar à Novari |
 | `GET` | `/api/projects/:id/submissions` | Histórico de envios |
+| `GET` | `/api/submissions/:id/ficha` | Ficha do marceneiro (HTML): medidas, pontos técnicos, vistas 3D e link para o 3D |
+| `GET` | `/api/submissions/:id/vistas/:ordem` | Imagem de uma vista 3D do envio |
 
 O projeto usa **o mesmo formato do estado do planejador** (`projectState.js`), com os
 metadados `nome` e `clienteId`. Todas as medidas estão em cm, com a origem no centro do chão
@@ -324,17 +327,26 @@ curl -X POST http://localhost:3000/api/quotes/estimate -H "Content-Type: applica
 ```json
 {
   "cliente": { "nome": "Maria Silva", "email": "maria@exemplo.com", "telefone": "(11) 98888-7777" },
-  "observacoes": "Prefiro contacto à tarde."
+  "observacoes": "Prefiro contacto à tarde.",
+  "vistas": [{ "nome": "perspetiva", "imagem": "data:image/jpeg;base64,…" }]
 }
 ```
+
+`vistas` (opcional) é a planificação 3D capturada pelo planejador: até 4 imagens
+(`perspetiva`, `planta`, `frontal`, `lateral`), JPEG/PNG/WebP até 2,5 MB cada.
 
 O servidor:
 
 1. valida o projeto (tem de ter módulos) e o contacto (email ou telefone);
 2. encontra o cliente pelo email ou cria-o, sem duplicar, e associa-o ao projeto;
 3. gera um resumo em texto, as especificações técnicas (módulos, medidas, componentes, pontos técnicos) e o valor aproximado;
-4. regista o envio em `project_submissions`, com destino `novarimobiliarioexclusivo@gmail.com`;
-5. chama `services/notificationService.js`. **O envio automático de email ainda não está
+4. regista o envio em `project_submissions`, com destino `novarimobiliarioexclusivo@gmail.com`,
+   e as vistas em `submission_views`;
+5. acrescenta ao resumo os links para o marceneiro: a **ficha técnica**
+   (`/api/submissions/:id/ficha` — medidas de cada módulo, pontos de água/gás/eletricidade e
+   vistas 3D) e o **3D interativo** (`configurador.html?projeto=…&modo=leitura`, só para ver:
+   não grava alterações). Os links usam `PUBLIC_URL` e `SITE_URL` do `.env`;
+6. chama `services/notificationService.js`. **O envio automático de email ainda não está
    configurado**, por isso a resposta traz `"emailEnviado": false` e o planejador continua a
    abrir o email do cliente. Para ativar o envio, implemente `enviarEmail()` nesse ficheiro
    (SMTP/nodemailer, Resend, SES…).

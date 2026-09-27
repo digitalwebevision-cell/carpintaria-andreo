@@ -3,8 +3,10 @@
    1. valida o projeto e os contactos do cliente
    2. associa (ou cria, sem duplicar) o cliente
    3. gera resumo em texto + especificações técnicas + valor aproximado
-   4. regista o envio no banco
-   5. notifica a Novari (email, quando configurado)
+   4. regista o envio no banco, com as vistas 3D (planificação) capturadas
+      no planejador
+   5. notifica a Novari (email, quando configurado) com o link da ficha
+      do marceneiro: medidas + vistas 3D + 3D interativo
    ============================================================ */
 const { getDb } = require('../database');
 const config = require('../config');
@@ -19,9 +21,26 @@ const engine = require('./engine');
 const AppError = require('../utils/AppError');
 const logger = require('../utils/logger');
 const { z, validar } = require('../validators/common');
-const { agora } = require('../utils/helpers');
+const { agora, novoId } = require('../utils/helpers');
 
 const C = engine.Catalogo;
+
+const TITULOS_VISTA = {
+  perspetiva: 'Perspetiva',
+  planta: 'Planta (vista de cima)',
+  frontal: 'Vista frontal',
+  lateral: 'Vista lateral'
+};
+const TAMANHO_MAX_VISTA = 2.5 * 1024 * 1024; // por imagem, já descodificada
+const DATA_URL_RE = /^data:(image\/(?:jpeg|png|webp));base64,([A-Za-z0-9+/]+={0,2})$/;
+
+const vistaSchema = z
+  .object({
+    nome: z.enum(Object.keys(TITULOS_VISTA)),
+    titulo: z.string().max(80).optional(),
+    imagem: z.string().max(Math.ceil((TAMANHO_MAX_VISTA * 4) / 3) + 40)
+  })
+  .strict();
 
 const pedidoEnvio = z
   .object({
@@ -33,9 +52,36 @@ const pedidoEnvio = z
         observacoes: z.string().max(5000).optional().nullable()
       })
       .optional(),
-    observacoes: z.string().max(5000).optional()
+    observacoes: z.string().max(5000).optional(),
+    vistas: z.array(vistaSchema).max(Object.keys(TITULOS_VISTA).length).optional()
   })
   .strict();
+
+// Confere que cada imagem é mesmo JPEG/PNG/WebP (não só o que o data URL diz)
+function assinaturaValida(mime, buf) {
+  if (mime === 'image/jpeg') return buf.length > 3 && buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff;
+  if (mime === 'image/png') return buf.length > 8 && buf.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]));
+  return buf.length > 12 && buf.toString('ascii', 0, 4) === 'RIFF' && buf.toString('ascii', 8, 12) === 'WEBP';
+}
+
+function lerVistas(vistas) {
+  return (vistas || []).map((v, i) => {
+    const m = DATA_URL_RE.exec(v.imagem);
+    const dados = m ? Buffer.from(m[2], 'base64') : null;
+    if (!m || !dados.length || dados.length > TAMANHO_MAX_VISTA || !assinaturaValida(m[1], dados)) {
+      throw AppError.validation([{ campo: `vistas.${i}.imagem`, mensagem: 'Imagem inválida (JPEG, PNG ou WebP até 2,5 MB).' }], 'Vista 3D inválida.');
+    }
+    return { nome: v.nome, titulo: TITULOS_VISTA[v.nome], mime: m[1], dados };
+  });
+}
+
+// Links que o marceneiro recebe
+function linksEnvio(envioId, projetoId) {
+  return {
+    ficha: `${config.publicUrl}/api/submissions/${envioId}/ficha`,
+    visualizacao3d: `${config.siteUrl}/configurador.html?projeto=${encodeURIComponent(projetoId)}&modo=leitura`
+  };
+}
 
 const dim = (d) => `${d.largura} × ${d.altura} × ${d.profundidade} cm`;
 
@@ -64,7 +110,7 @@ function gerarEspecificacoes(p) {
   };
 }
 
-function gerarResumo({ projeto, cliente, orcamento, observacoes }) {
+function gerarResumo({ projeto, cliente, orcamento, observacoes, links, totalVistas }) {
   const p = projeto.dados;
   const linhasModulos = p.modulos.map((m) => `- ${m.nome} (${dim(m.dimensoes)})`).join('\n');
   return [
@@ -87,6 +133,14 @@ function gerarResumo({ projeto, cliente, orcamento, observacoes }) {
     'CONFIGURAÇÃO',
     linhasModulos || 'Nenhum módulo definido.',
     '',
+    ...(links
+      ? [
+          'PLANIFICAÇÃO 3D E MEDIDAS (para o marceneiro)',
+          `Ficha técnica${totalVistas ? ` com ${totalVistas} vistas 3D` : ''}: ${links.ficha}`,
+          `Ver e rodar o projeto em 3D: ${links.visualizacao3d}`,
+          ''
+        ]
+      : []),
     'VALOR APROXIMADO (não é orçamento final)',
     orcamento.valorFormatado,
     '',
@@ -109,6 +163,7 @@ async function enviar(id, corpo) {
     throw new AppError(422, 'CLIENT_REQUIRED', 'Indique os dados de contacto do cliente (nome e email ou telefone).');
   }
 
+  const vistas = lerVistas(pedido.vistas);
   const orcamento = quoteService.estimarProjeto(projeto.dados);
 
   const { envio, cliente } = await getDb().transaction(async (trx) => {
@@ -116,9 +171,12 @@ async function enviar(id, corpo) {
     if (!cli) throw new AppError(422, 'CLIENT_NOT_FOUND', 'O cliente associado ao projeto não existe.');
     const enviadoEm = agora();
     await projectModel.atualizar(projeto.id, { clienteId: cli.id, enviadoEm, orcamentoEstimado: orcamento.valorAproximado }, trx);
-    const resumo = gerarResumo({ projeto, cliente: cli, orcamento, observacoes: pedido.observacoes });
+    const envioId = novoId();
+    const links = linksEnvio(envioId, projeto.id);
+    const resumo = gerarResumo({ projeto, cliente: cli, orcamento, observacoes: pedido.observacoes, links, totalVistas: vistas.length });
     const registo = await submissionModel.criar(
       {
+        id: envioId,
         projetoId: projeto.id,
         clienteId: cli.id,
         destino: config.novariEmail,
@@ -129,10 +187,12 @@ async function enviar(id, corpo) {
       },
       trx
     );
+    await submissionModel.guardarVistas(registo.id, vistas, trx);
     return { envio: registo, cliente: cli };
   });
 
-  logger.info('Projeto enviado para a Novari', { projetoId: projeto.id, envioId: envio.id, modulos: projeto.dados.modulos.length });
+  logger.info('Projeto enviado para a Novari', { projetoId: projeto.id, envioId: envio.id, modulos: projeto.dados.modulos.length, vistas: vistas.length });
+  const links = linksEnvio(envio.id, projeto.id);
 
   let notificacao;
   try {
@@ -149,6 +209,8 @@ async function enviar(id, corpo) {
     cliente,
     orcamento,
     resumo: envio.resumo,
+    links,
+    vistas: vistas.length,
     emailEnviado: !!notificacao.enviado,
     mensagem: notificacao.enviado
       ? 'Projeto enviado para a Novari.'
@@ -161,4 +223,4 @@ async function listarEnvios(id) {
   return submissionModel.listarPorProjeto(id);
 }
 
-module.exports = { enviar, listarEnvios, gerarResumo, gerarEspecificacoes };
+module.exports = { enviar, listarEnvios, gerarResumo, gerarEspecificacoes, linksEnvio };
