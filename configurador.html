@@ -1,0 +1,178 @@
+﻿<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Planejador Novari | Mobiliário Personalizado</title>
+  <link rel="stylesheet" href="configurador.css">
+</head>
+<body>
+  <header class="header">
+    <a href="index.html" class="logo" aria-label="Voltar ao início">
+      <img src="336cde02-b99b-4cbc-947d-d282ff741cb1.png" alt="Logo Novari">
+    </a>
+    <a href="index.html" class="voltar">← Voltar ao site</a>
+  </header>
+
+  <main class="planner-shell">
+    <aside class="panel panel-left">
+      <div class="panel-header">
+        <span class="eyebrow">PLANEJADOR PROFISSIONAL</span>
+        <h1>Construir ambiente</h1>
+      </div>
+
+      <div class="control-block">
+        <label class="block-label">Ambiente</label>
+        <div id="environmentButtons" class="segmented-list"></div>
+      </div>
+
+      <div class="control-block">
+        <label class="block-label">Dimensões do espaço</label>
+        <div class="dimension-grid">
+          <div>
+            <label for="roomWidth">Largura</label>
+            <div class="field-with-unit">
+              <input id="roomWidth" type="number" value="320" min="100" step="10">
+              <span>cm</span>
+            </div>
+          </div>
+          <div>
+            <label for="roomDepth">Profundidade</label>
+            <div class="field-with-unit">
+              <input id="roomDepth" type="number" value="240" min="100" step="10">
+              <span>cm</span>
+            </div>
+          </div>
+          <div>
+            <label for="roomHeight">Altura</label>
+            <div class="field-with-unit">
+              <input id="roomHeight" type="number" value="270" min="180" step="10">
+              <span>cm</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="control-block">
+        <label class="block-label">Material e acabamento</label>
+        <div class="material-row">
+          <select id="materialSelect">
+            <option value="MDF">MDF</option>
+            <option value="Madeira">Madeira</option>
+            <option value="Compensado">Compensado</option>
+          </select>
+          <select id="finishSelect">
+            <option value="Carvalho">Carvalho</option>
+            <option value="Branco">Branco</option>
+            <option value="Preto">Preto</option>
+            <option value="Cinza">Cinza</option>
+            <option value="Nogueira">Nogueira</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="control-block">
+        <label class="block-label">Biblioteca de módulos</label>
+        <div id="moduleCatalog" class="module-catalog"></div>
+      </div>
+
+      <div class="control-block ai-panel">
+        <label class="block-label">Assistente IA</label>
+        <div id="aiSuggestions" class="ai-suggestions"></div>
+        <textarea id="aiPrompt" rows="4" placeholder="Ex.: Quero uma cozinha para 4 pessoas com menos de 3 metros..."></textarea>
+        <div class="ai-actions">
+          <button id="askAiBtn" class="secondary-btn" type="button">Perguntar ao assistente</button>
+          <button id="generateProjectBtn" class="primary-btn" type="button">Gerar meu projeto</button>
+        </div>
+      </div>
+
+      <div class="control-block reference-panel">
+        <label class="block-label">Referência visual</label>
+        <div class="sketchfab-embed-wrapper">
+          <iframe title="Wardrobe" frameborder="0" allowfullscreen mozallowfullscreen="true" webkitallowfullscreen="true" allow="autoplay; fullscreen; xr-spatial-tracking" xr-spatial-tracking execution-while-out-of-viewport execution-while-not-rendered web-share src="https://sketchfab.com/models/e48bb01993c7464ea09a02465c87d25d/embed"></iframe>
+          <p>
+            <a href="https://sketchfab.com/3d-models/wardrobe-e48bb01993c7464ea09a02465c87d25d" target="_blank" rel="nofollow">Wardrobe</a>
+            by
+            <a href="https://sketchfab.com/rizki29" target="_blank" rel="nofollow">rizky alamsyah</a>
+            on
+            <a href="https://sketchfab.com" target="_blank" rel="nofollow">Sketchfab</a>
+          </p>
+        </div>
+      </div>
+    </aside>
+
+    <section class="viewer-panel">
+      <div class="viewer-header">
+        <div>
+          <span class="eyebrow dark">VISUALIZAÇÃO 3D</span>
+          <h2>Ambiente atual</h2>
+        </div>
+        <div class="viewer-actions">
+          <button class="secondary-btn small" data-camera-preset="initial" type="button">Inicial</button>
+          <button class="secondary-btn small" data-camera-preset="top" type="button">Topo</button>
+          <button class="secondary-btn small" data-camera-preset="front" type="button">Frontal</button>
+          <button class="secondary-btn small" data-camera-preset="side" type="button">Lateral</button>
+          <button class="secondary-btn small" data-camera-preset="fit" type="button">Ajustar</button>
+          <button class="secondary-btn small" id="resetProjectBtn" type="button">Resetar</button>
+          <button class="primary-btn small" id="saveProjectBtn" type="button">Guardar projeto</button>
+        </div>
+      </div>
+
+      <div class="viewer-canvas-wrap">
+        <div id="modelo3d"></div>
+      </div>
+
+      <div class="module-inspector-block">
+        <div id="selectedModuleInspector"></div>
+      </div>
+    </section>
+
+    <aside class="panel panel-right">
+      <div class="panel-header compact">
+        <span class="eyebrow">ORÇAMENTO</span>
+        <h3>Estimativa de preço</h3>
+      </div>
+
+      <div id="budgetSummary" class="budget-box"></div>
+
+      <div class="project-summary-box">
+        <div class="summary-title-row">
+          <h3>Resumo do projeto</h3>
+          <span class="tag">Valor aproximado</span>
+        </div>
+        <ul id="projectSummary" class="summary-list"></ul>
+      </div>
+
+      <div class="client-form">
+        <h3>Enviar projeto para a Novari</h3>
+        <label>
+          Nome
+          <input id="clientName" type="text" placeholder="Seu nome">
+        </label>
+        <label>
+          Email
+          <input id="clientEmail" type="email" placeholder="seu@email.com">
+        </label>
+        <label>
+          Telefone
+          <input id="clientPhone" type="tel" placeholder="(xx) xxxxx-xxxx">
+        </label>
+        <label>
+          Observações
+          <textarea id="clientNotes" rows="4" placeholder="Descreva objetivos, estilo, aspeto preferido..."></textarea>
+        </label>
+        <button id="sendProjectBtn" class="primary-btn full" type="button">Enviar projeto</button>
+      </div>
+    </aside>
+  </main>
+
+  <div id="toast" class="toast" aria-live="polite"></div>
+
+  <script src="https://cdn.babylonjs.com/babylon.js"></script>
+  <script src="furnitureCatalog.js"></script>
+  <script src="projectState.js"></script>
+  <script src="aiParser.js"></script>
+  <script src="furnitureAssemblyEngine.js"></script>
+  <script src="configurador.js"></script>
+</body>
+</html>
