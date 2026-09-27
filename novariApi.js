@@ -9,7 +9,8 @@
      - liga o assistente à IA do servidor (POST /api/ai)
    Quando não está (ex.: site estático), o planejador continua
    a funcionar exatamente como antes (localStorage + mailto).
-   Para apontar para outra API: window.NOVARI_API_URL = 'https://…/api'
+   No site publicado, a API é window.NOVARI_API_URL (configurador.html);
+   em localhost usa-se sempre a API local.
    ============================================================ */
 (function (global) {
   'use strict';
@@ -40,13 +41,13 @@
     }
   };
 
+  // Em localhost usa sempre a API local (nunca grava no banco de produção);
+  // no site publicado usa NOVARI_API_URL.
   function candidatos() {
-    if (global.NOVARI_API_URL) return [String(global.NOVARI_API_URL).replace(/\/$/, '')];
     const loc = global.location;
     if (loc.protocol === 'file:') return ['http://localhost:3000/api'];
-    const local = ['localhost', '127.0.0.1'].includes(loc.hostname);
-    // Em produção só se usa a API quando NOVARI_API_URL está definido
-    return local ? ['/api', 'http://localhost:3000/api'] : [];
+    if (['localhost', '127.0.0.1'].includes(loc.hostname)) return ['/api', 'http://localhost:3000/api'];
+    return global.NOVARI_API_URL ? [String(global.NOVARI_API_URL).replace(/\/$/, '')] : [];
   }
 
   function comTempoLimite(ms) {
@@ -54,21 +55,25 @@
     return undefined;
   }
 
-  // Verifica (uma vez) se a API responde
+  // Verifica se a API responde. Um sucesso fica em cache; uma falha não, para
+  // voltar a tentar mais tarde (no Render gratuito a API pode estar a "acordar").
+  let emailConfigurado = false;
   function disponivel() {
     if (!verificacao) {
       verificacao = (async () => {
         for (const c of candidatos()) {
           try {
-            const r = await fetch(c + '/health', { signal: comTempoLimite(2500) });
+            const r = await fetch(c + '/health', { signal: comTempoLimite(/^https:/.test(c) ? 8000 : 2500) });
             const j = await r.json();
             if (j && j.success) {
               base = c;
               iaConfigurada = !!(j.data && j.data.ia && j.data.ia.configurada);
+              emailConfigurado = !!(j.data && j.data.email && j.data.email.configurado);
               return true;
             }
           } catch (e) { /* tenta o próximo */ }
         }
+        verificacao = null;
         return false;
       })();
     }
@@ -228,6 +233,7 @@
     enviar,
     recuperar,
     modoLeitura: MODO_LEITURA,
+    get emailConfigurado() { return emailConfigurado; },
     get projetoId() { return projetoId; }
   };
 })(window);

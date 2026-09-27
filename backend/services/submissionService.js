@@ -18,6 +18,7 @@ const clientService = require('./clientService');
 const quoteService = require('./quoteService');
 const notificationService = require('./notificationService');
 const engine = require('./engine');
+const { linksEnvio } = require('./fichaService');
 const AppError = require('../utils/AppError');
 const logger = require('../utils/logger');
 const { z, validar } = require('../validators/common');
@@ -73,14 +74,6 @@ function lerVistas(vistas) {
     }
     return { nome: v.nome, titulo: TITULOS_VISTA[v.nome], mime: m[1], dados };
   });
-}
-
-// Links que o marceneiro recebe
-function linksEnvio(envioId, projetoId) {
-  return {
-    ficha: `${config.publicUrl}/api/submissions/${envioId}/ficha`,
-    visualizacao3d: `${config.siteUrl}/configurador.html?projeto=${encodeURIComponent(projetoId)}&modo=leitura`
-  };
 }
 
 const dim = (d) => `${d.largura} × ${d.altura} × ${d.profundidade} cm`;
@@ -196,7 +189,7 @@ async function enviar(id, corpo) {
 
   let notificacao;
   try {
-    notificacao = await notificationService.notificarNovoProjeto({ envio, resumo: envio.resumo });
+    notificacao = await notificationService.notificarNovoProjeto({ envio, cliente, vistas });
   } catch (e) {
     logger.error('Falha ao notificar a Novari', e);
     notificacao = { enviado: false, motivo: 'ERRO_NO_ENVIO' };
@@ -214,7 +207,9 @@ async function enviar(id, corpo) {
     emailEnviado: !!notificacao.enviado,
     mensagem: notificacao.enviado
       ? 'Projeto enviado para a Novari.'
-      : 'Projeto registado na Novari. O envio automático de email ainda não está configurado.'
+      : notificacao.motivo === 'ERRO_NO_ENVIO'
+        ? 'Projeto registado na Novari, mas o email não pôde ser enviado.'
+        : 'Projeto registado na Novari. O envio automático de email ainda não está configurado.'
   };
 }
 
@@ -223,4 +218,4 @@ async function listarEnvios(id) {
   return submissionModel.listarPorProjeto(id);
 }
 
-module.exports = { enviar, listarEnvios, gerarResumo, gerarEspecificacoes, linksEnvio };
+module.exports = { enviar, listarEnvios, gerarResumo, gerarEspecificacoes };

@@ -1,0 +1,47 @@
+# Render Blueprint: API da Novari (backend/).
+# No Render: New → Blueprint → escolher este repositório. Os valores com
+# "sync: false" são pedidos no painel (não ficam no GitHub).
+services:
+  - type: web
+    name: novari-planejador-api
+    runtime: node
+    plan: free
+    region: virginia
+    rootDir: backend
+    buildCommand: npm ci
+    startCommand: npm start
+    healthCheckPath: /api/health
+    branch: main
+    autoDeploy: true
+    # o backend usa o catálogo e as regras do planejador (ficheiros na raiz)
+    buildFilter:
+      paths:
+        - backend/**
+        - furnitureCatalog.js
+        - projectState.js
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: NODE_ENV
+        value: production
+      # PostgreSQL do Neon: postgres://…?sslmode=require
+      - key: DATABASE_URL
+        sync: false
+      - key: CORS_ORIGINS
+        value: https://novarimobiliarioexclusivo.com,https://www.novarimobiliarioexclusivo.com
+      # links do 3D interativo apontam para o site publicado
+      - key: SITE_URL
+        value: https://novarimobiliarioexclusivo.com
+      - key: SERVE_FRONTEND
+        value: "false"
+      - key: NOVARI_EMAIL
+        value: novarimobiliarioexclusivo@gmail.com
+      # Email: o Render gratuito bloqueia SMTP → Resend (API HTTP)
+      - key: RESEND_API_KEY
+        sync: false
+      # Chave das rotas de administração (gerada pelo Render; ver no painel)
+      - key: ADMIN_TOKEN
+        generateValue: true
+      # Opcional: assistente com IA
+      - key: AI_API_KEY
+        sync: false

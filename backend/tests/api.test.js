@@ -8,7 +8,8 @@ const path = require('node:path');
 
 const pasta = fs.mkdtempSync(path.join(os.tmpdir(), 'novari-test-'));
 process.env.NODE_ENV = 'test';
-process.env.DATABASE_URL = `sqlite:${path.join(pasta, 'teste.sqlite')}`;
+// TEST_DATABASE_URL=postgres://… corre os mesmos testes contra PostgreSQL
+process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || `sqlite:${path.join(pasta, 'teste.sqlite')}`;
 process.env.AI_API_KEY = '';
 
 const { criarApp } = require('../app');
@@ -266,6 +267,74 @@ test('envio leva a planificação 3D e a ficha do marceneiro', async () => {
 
   assert.equal((await fetch(`${base}/api/submissions/${envio.envio.id}/vistas/9`)).status, 404);
   assert.equal((await fetch(`${base}/api/submissions/nao-existe/ficha`)).status, 404);
+});
+
+test('email à Novari pelo Resend leva a ficha com as vistas embutidas', async () => {
+  const config = require('../config');
+  const http = require('node:http');
+  let recebido = null;
+  const falso = http.createServer((req, res) => {
+    let corpo = '';
+    req.on('data', (c) => (corpo += c));
+    req.on('end', () => {
+      recebido = { auth: req.headers.authorization, corpo: JSON.parse(corpo) };
+      res.writeHead(200, { 'Content-Type': 'application/json' }).end('{"id":"email-123"}');
+    });
+  });
+  await new Promise((r) => falso.listen(0, r));
+  const antes = { ...config.email };
+  Object.assign(config.email, { resendApiKey: 're_teste', resendUrl: `http://127.0.0.1:${falso.address().port}/emails` });
+  try {
+    const p = await api('POST', '/api/projects', projetoDoPlanejador());
+    const png = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+    const r = await api('POST', `/api/projects/${p.body.data.id}/send`, {
+      cliente: { nome: 'Rui', email: 'rui@exemplo.com' },
+      vistas: [{ nome: 'planta', imagem: `data:image/png;base64,${png}` }]
+    });
+    assert.equal(r.status, 201, r.texto);
+    assert.equal(r.body.data.emailEnviado, true);
+    assert.equal(r.body.data.envio.status, 'email_enviado');
+
+    const e = recebido.corpo;
+    assert.equal(recebido.auth, 'Bearer re_teste');
+    assert.deepEqual(e.to, ['novarimobiliarioexclusivo@gmail.com']);
+    assert.equal(e.reply_to, 'rui@exemplo.com');
+    assert.match(e.subject, /Rui/);
+    assert.equal(e.attachments.length, 1);
+    assert.equal(e.attachments[0].content, png);
+    assert.equal(e.attachments[0].content_type, 'image/png');
+    assert.ok(e.html.includes(`src="cid:${e.attachments[0].content_id}"`));
+    assert.ok(e.html.includes(p.body.data.modulos[0].nome));
+    assert.match(e.text, /PLANIFICAÇÃO 3D E MEDIDAS/);
+  } finally {
+    Object.assign(config.email, antes);
+    await new Promise((r) => falso.close(r));
+  }
+});
+
+test('segurança: rotas de administração exigem ADMIN_TOKEN', async () => {
+  const config = require('../config');
+  const antes = { adminToken: config.adminToken, isProduction: config.isProduction };
+  try {
+    // produção sem token → fechadas
+    Object.assign(config, { adminToken: '', isProduction: true });
+    assert.equal((await api('GET', '/api/clients')).status, 403);
+    assert.equal((await api('GET', '/api/projects')).status, 403);
+
+    Object.assign(config, { adminToken: 'segredo-123' });
+    const p = await api('POST', '/api/projects', projetoDoPlanejador());
+    assert.equal(p.status, 201, 'o planejador continua a criar projetos');
+    const id = p.body.data.id;
+    assert.equal((await api('GET', `/api/projects/${id}`)).status, 200);
+    assert.equal((await api('GET', '/api/projects')).status, 401);
+    assert.equal((await api('GET', '/api/clients', undefined, { Authorization: 'Bearer errado' })).status, 401);
+    assert.equal((await api('GET', `/api/projects/${id}/submissions`)).status, 401);
+    assert.equal((await api('DELETE', `/api/projects/${id}`)).status, 401);
+    assert.equal((await api('GET', '/api/clients', undefined, { Authorization: 'Bearer segredo-123' })).status, 200);
+    assert.equal((await api('DELETE', `/api/projects/${id}`, undefined, { Authorization: 'Bearer segredo-123' })).status, 204);
+  } finally {
+    Object.assign(config, antes);
+  }
 });
 
 test('IA: sem chave responde 503 e valida o pedido', async () => {

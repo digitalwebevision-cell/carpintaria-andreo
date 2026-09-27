@@ -583,7 +583,8 @@
     if (botao) botao.disabled = true;
     try {
       const vistas = capturarVistas();
-      // Com o backend disponível, o projeto fica registado na Novari (ficha + 3D interativo)
+      // Com o backend disponível, o projeto fica registado na Novari e o servidor
+      // envia o email com a ficha (medidas + vistas 3D + 3D interativo)
       if (window.NovariAPI && (await window.NovariAPI.disponivel())) {
         try {
           const r = await window.NovariAPI.enviar(
@@ -593,16 +594,15 @@
             vistas
           );
           if (r.emailEnviado) {
-            showToast('Projeto enviado para a Novari.');
+            window.location.href = 'enviado.html';
             return;
           }
-          // o resumo do servidor já traz os links da ficha (medidas + 3D)
-          abrirEmail(r.resumo);
-          return;
+          console.warn('[Novari] o servidor registou o projeto mas não enviou o email:', r.mensagem);
         } catch (e) {
           console.warn('[Novari] não foi possível registar o envio no servidor:', e.message);
         }
       }
+      // Alternativa sem servidor: formulário com a planificação 3D em anexo
       let imagem = null;
       try {
         imagem = await montarPlanificacao(vistas);
@@ -615,11 +615,6 @@
       enviando = false;
       if (botao) botao.disabled = false;
     }
-  }
-
-  function abrirEmail(corpo) {
-    window.location.href = `mailto:${EMAIL_NOVARI}?subject=${encodeURIComponent('Novo projeto personalizado — Novari')}&body=${encodeURIComponent(corpo)}`;
-    showToast('Email preparado para envio.');
   }
 
   // ---------------------------------------------------------------

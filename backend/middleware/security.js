@@ -1,5 +1,6 @@
 /* CORS, limite de pedidos à IA e proteção dos ficheiros estáticos. */
 const path = require('node:path');
+const { timingSafeEqual } = require('node:crypto');
 const cors = require('cors');
 const { rateLimit } = require('express-rate-limit');
 const config = require('../config');
@@ -12,7 +13,7 @@ const corsApi = cors({
     callback(null, !origin || config.corsOrigins.includes(origin));
   },
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
-  allowedHeaders: ['Content-Type'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
   maxAge: 600
 });
 
@@ -38,4 +39,24 @@ function protegerEstaticos(req, res, next) {
   next();
 }
 
-module.exports = { corsApi, limiteIA, protegerEstaticos };
+// Rotas de administração (listar projetos, clientes, histórico de envios, apagar):
+// exigem "Authorization: Bearer <ADMIN_TOKEN>". Em produção, sem ADMIN_TOKEN
+// definido ficam fechadas; em desenvolvimento e testes ficam abertas.
+function iguais(a, b) {
+  const x = Buffer.from(String(a));
+  const y = Buffer.from(String(b));
+  return x.length === y.length && timingSafeEqual(x, y);
+}
+
+function exigirAdmin(req, res, next) {
+  const token = config.adminToken;
+  if (!token) {
+    if (!config.isProduction) return next();
+    return next(new AppError(403, 'ADMIN_DISABLED', 'Rota de administração desativada (defina ADMIN_TOKEN).'));
+  }
+  const m = /^Bearer (.+)$/.exec(req.get('authorization') || '');
+  if (m && iguais(m[1], token)) return next();
+  next(new AppError(401, 'UNAUTHORIZED', 'Acesso reservado à administração da Novari.'));
+}
+
+module.exports = { corsApi, limiteIA, protegerEstaticos, exigirAdmin };

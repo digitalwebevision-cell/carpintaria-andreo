@@ -2,6 +2,7 @@
 const { Router } = require('express');
 const { getDb } = require('../database');
 const aiService = require('../services/aiService');
+const notificationService = require('../services/notificationService');
 const pkg = require('../package.json');
 
 const router = Router();
@@ -16,7 +17,7 @@ router.get('/health', async (req, res) => {
   res.status(banco === 'ok' ? 200 : 503).json({
     success: banco === 'ok',
     message: banco === 'ok' ? 'Novari API funcionando.' : 'Novari API sem acesso ao banco de dados.',
-    data: { versao: pkg.version, bancoDeDados: banco, ia: { configurada: aiService.estaConfigurada() } }
+    data: { versao: pkg.version, bancoDeDados: banco, ia: { configurada: aiService.estaConfigurada() }, email: { configurado: notificationService.estaConfigurado() } }
   });
 });
 

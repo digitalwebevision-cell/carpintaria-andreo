@@ -4,12 +4,14 @@
    módulo, pontos de água/gás/eletricidade e a planificação 3D
    (vistas capturadas no planejador), mais o link para o 3D interativo.
    Usa sempre o retrato guardado no envio, não o projeto atual.
+   O mesmo HTML é o corpo do email enviado à Novari (notificationService),
+   com as vistas embutidas na mensagem.
    ============================================================ */
 const submissionModel = require('../models/submissionModel');
 const clientModel = require('../models/clientModel');
-const { linksEnvio } = require('./submissionService');
 const engine = require('./engine');
 const AppError = require('../utils/AppError');
+const config = require('../config');
 const { isUuid } = require('../utils/helpers');
 
 const C = engine.Catalogo;
@@ -23,6 +25,14 @@ function escapar(texto) {
 
 const parede = (id) => NOMES_PAREDE[id] || id || '—';
 const cm = (v) => (v === undefined || v === null || v === '' ? '—' : `${escapar(v)} cm`);
+
+// Links que o marceneiro recebe: ficha técnica e 3D interativo (só visualização)
+function linksEnvio(envioId, projetoId) {
+  return {
+    ficha: `${config.publicUrl}/api/submissions/${envioId}/ficha`,
+    visualizacao3d: `${config.siteUrl}/configurador.html?projeto=${encodeURIComponent(projetoId)}&modo=leitura`
+  };
+}
 
 async function obterEnvio(id) {
   const envio = isUuid(id) ? await submissionModel.obter(id) : null;
@@ -92,16 +102,28 @@ async function gerarFicha(id) {
     submissionModel.listarVistas(envio.id),
     envio.clienteId ? clientModel.obter(envio.clienteId) : null
   ]);
+  return renderizarFicha({ envio, cliente, vistas }, { srcVista: (v) => `vistas/${v.ordem}` });
+}
+
+/**
+ * HTML da ficha. opcoes.srcVista(vista) → endereço de cada imagem
+ * (relativo na página, "cid:…" no email); opcoes.email ajusta o layout
+ * para programas de email (sem grelha CSS, com link para a ficha online).
+ */
+function renderizarFicha({ envio, cliente, vistas }, opcoes) {
+  const { srcVista, email = false } = opcoes;
   const esp = envio.especificacoes || {};
   const espaco = esp.espaco || {};
   const links = linksEnvio(envio.id, envio.projetoId);
   const eletro = (esp.eletrodomesticos || []).map((e) => C.ELETRODOMESTICOS[e] || e).join(', ');
 
+  // no email, clicar numa vista abre a imagem em tamanho real no servidor
+  const urlVista = (v) => (email ? `${config.publicUrl}/api/submissions/${envio.id}/vistas/${v.ordem}` : srcVista(v));
   const figuras = vistas.length
     ? vistas
         .map(
           (v) => `<figure>
-        <a href="vistas/${v.ordem}" target="_blank"><img src="vistas/${v.ordem}" alt="${escapar(v.titulo)}" loading="lazy"></a>
+        <a href="${escapar(urlVista(v))}" target="_blank"><img src="${escapar(srcVista(v))}" alt="${escapar(v.titulo)}"${email ? ' width="640"' : ''}></a>
         <figcaption>${escapar(v.titulo)}</figcaption>
       </figure>`
         )
@@ -138,13 +160,17 @@ async function gerarFicha(id) {
   .nota { font-size: 12px; color: #7a6a58; }
   .botao { display: inline-block; background: #6b4a2b; color: #fff; padding: 10px 16px; border-radius: 6px; text-decoration: none; font-weight: 600; }
   pre { white-space: pre-wrap; font: inherit; font-size: 14px; }
+  body.email .vistas { display: block; }
+  body.email figure { margin: 0 0 16px; max-width: 640px; }
+  body.email img { max-width: 100%; height: auto; }
   @media print { body { background: #fff; padding: 0; } .botao { display: none; } figure, tr { break-inside: avoid; } }
 </style>
 </head>
-<body>
+<body${email ? ' class="email"' : ''}>
 <main>
   <h1>Ficha técnica para o marceneiro</h1>
   <p class="sub">Envio ${escapar(envio.id)} · ${escapar(data)}</p>
+  ${email ? `<p><a href="${escapar(links.ficha)}">Abrir esta ficha no navegador</a> (para imprimir ou partilhar)</p>` : ''}
 
   <section class="dados">
     <div><b>Cliente</b>${escapar(cliente ? cliente.nome : '—')}</div>
@@ -175,4 +201,4 @@ async function gerarFicha(id) {
 </html>`;
 }
 
-module.exports = { gerarFicha, obterVista };
+module.exports = { gerarFicha, renderizarFicha, obterVista, linksEnvio };

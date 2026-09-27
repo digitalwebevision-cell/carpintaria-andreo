@@ -37,8 +37,9 @@ const config = {
   isTest: NODE_ENV === 'test',
   port: PORT,
   // Endereços públicos usados nos links enviados ao marceneiro (ficha e 3D)
-  publicUrl: semBarraFinal(env.PUBLIC_URL || `http://localhost:${PORT}`),
-  siteUrl: semBarraFinal(env.SITE_URL || env.PUBLIC_URL || `http://localhost:${PORT}`),
+  // (no Render, RENDER_EXTERNAL_URL é definido automaticamente)
+  publicUrl: semBarraFinal(env.PUBLIC_URL || env.RENDER_EXTERNAL_URL || `http://localhost:${PORT}`),
+  siteUrl: semBarraFinal(env.SITE_URL || env.PUBLIC_URL || env.RENDER_EXTERNAL_URL || `http://localhost:${PORT}`),
   backendDir: BACKEND_DIR,
   // Pasta do site: os ficheiros do planejador são partilhados com o backend
   frontendDir: path.resolve(BACKEND_DIR, env.FRONTEND_DIR || '..'),
@@ -53,7 +54,24 @@ const config = {
     fallbacks: env.AI_FALLBACKS !== 'false',
     rateLimitPerMin: inteiro(env.AI_RATE_LIMIT_PER_MIN, 20)
   },
-  novariEmail: env.NOVARI_EMAIL || 'novarimobiliarioexclusivo@gmail.com'
+  // Chave das rotas de administração (listagens, clientes, apagar)
+  adminToken: env.ADMIN_TOKEN || '',
+  novariEmail: env.NOVARI_EMAIL || 'novarimobiliarioexclusivo@gmail.com',
+  // Envio de email: Resend (API HTTP, funciona no Render gratuito, que bloqueia SMTP)
+  // ou SMTP (ex.: Gmail com senha de app). Sem nenhum dos dois, não envia.
+  email: {
+    resendApiKey: env.RESEND_API_KEY || '',
+    resendUrl: env.RESEND_API_URL || 'https://api.resend.com/emails',
+    smtpHost: env.SMTP_HOST || '',
+    smtpPort: inteiro(env.SMTP_PORT, 465),
+    smtpUser: env.SMTP_USER || '',
+    smtpPass: env.SMTP_PASS || '',
+    from:
+      env.EMAIL_FROM ||
+      (env.RESEND_API_KEY
+        ? 'Novari Planejador <onboarding@resend.dev>'
+        : `Novari Planejador <${env.SMTP_USER || 'no-reply@localhost'}>`)
+  }
 };
 
 module.exports = config;

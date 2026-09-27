@@ -1,7 +1,12 @@
 const { Router } = require('express');
 const c = require('../controllers/clientsController');
 
+const { exigirAdmin } = require('../middleware/security');
+
 const router = Router();
+
+// Dados pessoais dos clientes: só a administração
+router.use(exigirAdmin);
 
 router.get('/', c.listar);
 router.post('/', c.criar);
