@@ -419,18 +419,50 @@
   // ---------------------------------------------------------------
   // Guardar / enviar
   // ---------------------------------------------------------------
-  function saveProject() {
+  async function saveProject() {
     const p = Store.obter();
     const payload = Object.assign({}, Store.resumoParaIA(p), { observacoes: p.observacoes, guardadoEm: new Date().toISOString() });
+    let local = false;
     try {
       localStorage.setItem('novari-project', JSON.stringify(payload));
-      showToast('Projeto guardado localmente.');
-    } catch (e) {
-      showToast('Não foi possível guardar neste navegador.');
+      local = true;
+    } catch (e) { /* segue para o servidor */ }
+    // Com o backend disponível, o projeto fica guardado no servidor (e pode ser reaberto)
+    if (window.NovariAPI && (await window.NovariAPI.disponivel())) {
+      try {
+        await window.NovariAPI.guardar(p);
+        showToast('Projeto guardado. Pode reabri-lo mais tarde neste endereço.');
+        return;
+      } catch (e) {
+        console.warn('[Novari] não foi possível guardar no servidor', e);
+      }
     }
+    showToast(local ? 'Projeto guardado localmente.' : 'Não foi possível guardar neste navegador.');
   }
 
-  function sendProjectByEmail() {
+  async function sendProjectByEmail() {
+    // Com o backend disponível, o projeto fica registado na Novari antes de abrir o email
+    if (window.NovariAPI && (await window.NovariAPI.disponivel())) {
+      const texto = (id) => ($(id).value || '').trim();
+      try {
+        const r = await window.NovariAPI.enviar(
+          Store.obter(),
+          { nome: texto('clientName') || 'Cliente', email: texto('clientEmail') || null, telefone: texto('clientPhone') || null },
+          texto('clientNotes')
+        );
+        if (r.emailEnviado) {
+          showToast('Projeto enviado para a Novari.');
+          return;
+        }
+      } catch (e) {
+        console.warn('[Novari] não foi possível registar o envio no servidor:', e.message);
+      }
+    }
+    // O email do cliente continua a ser aberto enquanto o envio automático não estiver configurado
+    sendProjectByMailto();
+  }
+
+  function sendProjectByMailto() {
     const p = Store.obter();
     const name = $('clientName').value.trim() || 'Cliente';
     const email = $('clientEmail').value.trim() || 'Não informado';
@@ -571,6 +603,17 @@
     if (motor) motor.enquadrar(true);
     iniciarConversa(false);
     window.__NOVARI__ = { Store, AI, C, motor };
+
+    // Backend opcional: recupera o projeto guardado e ativa a gravação automática
+    if (window.NovariAPI) {
+      window.NovariAPI.iniciar({
+        Store,
+        aoCarregar: () => {
+          if (motor) motor.enquadrar(true);
+          showToast('Projeto recuperado.');
+        }
+      }).catch((e) => console.warn('[Novari] backend indisponível', e));
+    }
   }
 
   init();

@@ -176,6 +176,14 @@
     return 'modulo-' + String(sequencia).padStart(3, '0');
   }
 
+  // Ao carregar um projeto guardado, os novos IDs continuam depois dos existentes
+  function reservarIds(modulos) {
+    (modulos || []).forEach((m) => {
+      const n = /^modulo-(\d+)$/.exec((m && m.id) || '');
+      if (n) sequencia = Math.max(sequencia, Number(n[1]));
+    });
+  }
+
   function criarModulo(catalogoId, extra = {}) {
     const d = getModulo(catalogoId);
     if (!d) return null;
@@ -346,6 +354,7 @@
     suporta,
     limites,
     criarModulo,
+    reservarIds,
     nomeAutomatico,
     layoutRoupeiro,
     precoModulo,
