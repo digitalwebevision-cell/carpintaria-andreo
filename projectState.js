@@ -1374,9 +1374,29 @@
       eletrodomesticos: p.eletrodomesticos,
       selecionado: p.selecionado,
       estado: p.estado,
-      modulos: p.modulos.map((m) => ({ id: m.id, tipo: m.tipo, nome: m.nome, parede: m.parede, posicao: m.posicao, rotacao: m.rotacao, dimensoes: m.dimensoes, componentes: m.componentes })),
+      modulos: p.modulos.map((m) => ({ id: m.id, catalogoId: m.catalogoId, tipo: m.tipo, zona: m.zona, nome: m.nome, parede: m.parede, posicao: m.posicao, rotacao: m.rotacao, dimensoes: m.dimensoes, componentes: m.componentes })),
       orcamentoAproximado: Math.round(calcularOrcamento(p).total)
     };
+  }
+
+  // Substitui o projeto atual por um projeto guardado (ex.: vindo do backend).
+  // Campos em falta recebem os valores padrão; campos desconhecidos são ignorados.
+  function carregar(dados) {
+    if (!dados || typeof dados !== 'object') return falha('Projeto inválido.');
+    const novo = criarProjetoInicial(C.AMBIENTES[dados.tipo] ? dados.tipo : 'cozinha');
+    Object.keys(novo).forEach((k) => {
+      if (dados[k] !== undefined && dados[k] !== null) novo[k] = C.clone(dados[k]);
+    });
+    novo.preferencias = Object.assign(C.clone(PREFERENCIAS_PADRAO), novo.preferencias);
+    novo.conversa = Object.assign({ respondidos: {}, perguntaAtual: null, concluida: false, historico: [] }, novo.conversa);
+    novo.pontos = Object.assign({ agua: [], gas: [], eletrica: [] }, novo.pontos);
+    if (!Array.isArray(novo.modulos)) novo.modulos = [];
+    atualizarParedes(novo);
+    C.reservarIds(novo.modulos);
+    Object.keys(projeto).forEach((k) => delete projeto[k]);
+    Object.assign(projeto, novo);
+    notificar(['tudo']);
+    return ok('Projeto carregado.', ['tudo']);
   }
 
   // Inicialização: o projeto nunca começa vazio
@@ -1390,6 +1410,7 @@
     },
     executar,
     executarVarios,
+    carregar,
     restringir: (id, x, z) => {
       const m = getModuloPorId(projeto, id);
       return m ? restringir(projeto, m, x, z) : { x, z, valido: false };

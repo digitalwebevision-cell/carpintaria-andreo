@@ -1,0 +1,53 @@
+/* Configuração central: lê o .env uma única vez e expõe valores já validados. */
+const path = require('node:path');
+
+require('dotenv').config({ path: path.join(__dirname, '..', '.env'), quiet: true });
+
+const env = process.env;
+const BACKEND_DIR = path.join(__dirname, '..');
+const NODE_ENV = env.NODE_ENV || 'development';
+
+function lista(valor) {
+  return String(valor || '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
+function inteiro(valor, padrao) {
+  const n = Number.parseInt(valor, 10);
+  return Number.isFinite(n) && n > 0 ? n : padrao;
+}
+
+const ORIGENS_DEV = [
+  'http://localhost:3000',
+  'http://127.0.0.1:3000',
+  'http://localhost:5500',
+  'http://127.0.0.1:5500',
+  'http://localhost:8080',
+  'http://127.0.0.1:8080'
+];
+
+const config = {
+  env: NODE_ENV,
+  isProduction: NODE_ENV === 'production',
+  isTest: NODE_ENV === 'test',
+  port: inteiro(env.PORT, 3000),
+  backendDir: BACKEND_DIR,
+  // Pasta do site: os ficheiros do planejador são partilhados com o backend
+  frontendDir: path.resolve(BACKEND_DIR, env.FRONTEND_DIR || '..'),
+  serveFrontend: env.SERVE_FRONTEND !== 'false',
+  databaseUrl: env.DATABASE_URL || '',
+  corsOrigins: lista(env.CORS_ORIGINS).length ? lista(env.CORS_ORIGINS) : NODE_ENV === 'production' ? [] : ORIGENS_DEV,
+  logLevel: env.LOG_LEVEL || (NODE_ENV === 'test' ? 'silent' : 'info'),
+  ai: {
+    apiKey: env.AI_API_KEY || '',
+    model: env.AI_MODEL || 'claude-opus-5',
+    effort: ['low', 'medium', 'high', 'xhigh', 'max'].includes(env.AI_EFFORT) ? env.AI_EFFORT : 'medium',
+    fallbacks: env.AI_FALLBACKS !== 'false',
+    rateLimitPerMin: inteiro(env.AI_RATE_LIMIT_PER_MIN, 20)
+  },
+  novariEmail: env.NOVARI_EMAIL || 'novarimobiliarioexclusivo@gmail.com'
+};
+
+module.exports = config;
