@@ -45,8 +45,6 @@
     showToast.timeoutId = setTimeout(() => toast.classList.remove('show'), 2600);
   }
 
-  const dim = (m) => `${m.dimensoes.largura} × ${m.dimensoes.altura} × ${m.dimensoes.profundidade} cm`;
-
   // ---------------------------------------------------------------
   // Ambientes
   // ---------------------------------------------------------------
@@ -451,10 +449,9 @@
     }
   }
 
-  // Sem servidor não há onde guardar as imagens: junta as vistas numa só
-  // imagem (2 × 2) e descarrega-a para o cliente anexar ao email.
-  async function descarregarPlanificacao(vistas) {
-    if (!vistas.length) return false;
+  // Junta as vistas numa só imagem (2 × 2, com legendas) → Blob JPEG
+  async function montarPlanificacao(vistas) {
+    if (!vistas.length) return null;
     const imagens = await Promise.all(vistas.map((v) => new Promise((ok, falha) => {
       const img = new Image();
       img.onload = () => ok(img);
@@ -481,76 +478,148 @@
       ctx.fillText(vistas[i].titulo, x + 16, y + legenda / 2);
       ctx.drawImage(img, x, y + legenda, w, h);
     });
-    const link = document.createElement('a');
-    link.href = canvas.toDataURL('image/jpeg', 0.9);
-    link.download = 'projeto-novari-planificacao-3d.jpg';
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    return true;
+    return new Promise((ok) => canvas.toBlob(ok, 'image/jpeg', 0.88));
   }
 
-  async function sendProjectByEmail() {
-    const vistas = capturarVistas();
-    // Com o backend disponível, o projeto fica registado na Novari antes de abrir o email
-    if (window.NovariAPI && (await window.NovariAPI.disponivel())) {
-      const texto = (id) => ($(id).value || '').trim();
+  function dadosCliente() {
+    const texto = (id) => ($(id).value || '').trim();
+    return { nome: texto('clientName'), email: texto('clientEmail'), telefone: texto('clientPhone'), notas: texto('clientNotes') };
+  }
+
+  const NOMES_PAREDE = { fundo: 'Fundo', esquerda: 'Esquerda', direita: 'Direita', frente: 'Frente' };
+  const NOMES_PONTO = { agua: 'Água', gas: 'Gás', eletrica: 'Elétrica' };
+
+  // Campos do email (um por linha na tabela do FormSubmit): medidas de cada módulo
+  function camposDoProjeto(p, cli) {
+    const orc = Store.calcularOrcamento(p);
+    const campos = [
+      ['Nome', cli.nome || 'Cliente'],
+      ['Email', cli.email || 'Não informado'],
+      ['Telefone', cli.telefone || 'Não informado'],
+      ['Ambiente', C.AMBIENTES[p.tipo]],
+      ['Espaço (L × P × A)', `${p.espaco.largura} × ${p.espaco.profundidade} × ${p.espaco.altura} cm`],
+      ['Material', C.MATERIAIS[p.material].nome],
+      ['Acabamento', p.acabamento],
+      ['Estilo', (C.ESTILOS[p.estilo] || C.ESTILOS.moderno).nome],
+      ['Eletrodomésticos', (p.eletrodomesticos || []).map((e) => C.ELETRODOMESTICOS[e] || e).join(', ') || '—']
+    ];
+    p.modulos.forEach((m, i) => {
+      const c = m.componentes || {};
+      const comp = [c.portas && `${c.portas} porta(s)`, c.gavetas && `${c.gavetas} gaveta(s)`, c.prateleiras && `${c.prateleiras} prateleira(s)`].filter(Boolean).join(', ');
+      campos.push([
+        `Módulo ${i + 1}`,
+        `${m.nome} — L ${m.dimensoes.largura} × A ${m.dimensoes.altura} × P ${m.dimensoes.profundidade} cm — parede ${NOMES_PAREDE[m.parede] || m.parede}${comp ? ' — ' + comp : ''}`
+      ]);
+    });
+    const pontos = [];
+    Object.entries(p.pontos || {}).forEach(([tipo, lista]) => (lista || []).forEach((pt) => {
+      pontos.push(`${NOMES_PONTO[tipo] || tipo}: parede ${NOMES_PAREDE[pt.parede] || pt.parede}, a ${pt.posicao} cm do canto, altura ${pt.altura} cm`);
+    }));
+    if (pontos.length) campos.push(['Pontos técnicos', pontos.join(' | ')]);
+    campos.push(['Valor aproximado', `${C.formatarMoeda(orc.total)} (não é orçamento final)`]);
+    campos.push(['Observações', [p.observacoes, cli.notas].filter(Boolean).join(' ') || 'Sem observações adicionais.']);
+    return campos;
+  }
+
+  // Sem servidor próprio: o FormSubmit entrega o formulário por email à Novari,
+  // com a planificação 3D em anexo. Na primeira utilização o FormSubmit envia um
+  // email de ativação para este endereço.
+  const EMAIL_NOVARI = 'novarimobiliarioexclusivo@gmail.com';
+  const FORMULARIO_EMAIL = `https://formsubmit.co/${EMAIL_NOVARI}`;
+  const NOME_ANEXO = 'projeto-novari-planificacao-3d.jpg';
+
+  function enviarPorFormulario(campos, imagem, cli) {
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = FORMULARIO_EMAIL;
+    form.enctype = 'multipart/form-data';
+    form.acceptCharset = 'UTF-8';
+    form.hidden = true;
+    const campo = (nome, valor) => {
+      const input = document.createElement('input');
+      input.type = 'hidden';
+      input.name = nome;
+      input.value = valor;
+      form.appendChild(input);
+    };
+    campo('_subject', `Novo projeto personalizado — ${C.AMBIENTES[Store.obter().tipo]} — ${cli.nome || 'Cliente'}`);
+    campo('_template', 'table');
+    campo('_captcha', 'false');
+    campo('_next', new URL('enviado.html', window.location.href).href);
+    campo('_honey', '');
+    if (cli.email) campo('_replyto', cli.email);
+    campos.forEach(([nome, valor]) => campo(nome, valor));
+
+    let anexou = false;
+    if (imagem && typeof DataTransfer !== 'undefined') {
       try {
-        const r = await window.NovariAPI.enviar(
-          Store.obter(),
-          { nome: texto('clientName') || 'Cliente', email: texto('clientEmail') || null, telefone: texto('clientPhone') || null },
-          texto('clientNotes'),
-          vistas
-        );
-        if (r.emailEnviado) {
-          showToast('Projeto enviado para a Novari.');
-          return;
-        }
-        // o resumo do servidor já traz os links da ficha (medidas + 3D)
-        abrirEmail(r.resumo);
-        return;
+        const dt = new DataTransfer();
+        dt.items.add(new File([imagem], NOME_ANEXO, { type: 'image/jpeg' }));
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.name = 'attachment';
+        input.files = dt.files;
+        form.appendChild(input);
+        anexou = input.files.length === 1;
       } catch (e) {
-        console.warn('[Novari] não foi possível registar o envio no servidor:', e.message);
+        console.warn('[Novari] este navegador não permite anexar a imagem 3D', e);
       }
     }
-    // O email do cliente continua a ser aberto enquanto o envio automático não estiver configurado
-    let anexo = false;
-    try {
-      anexo = await descarregarPlanificacao(vistas);
-    } catch (e) {
-      console.warn('[Novari] não foi possível preparar a imagem da planificação 3D', e);
+    campo('Planificação 3D', anexou ? `Em anexo: ${NOME_ANEXO} (perspetiva, planta, frontal e lateral)` : 'Não foi possível anexar neste navegador.');
+    document.body.appendChild(form);
+    form.submit();
+  }
+
+  let enviando = false;
+  async function sendProjectByEmail() {
+    if (enviando) return;
+    const cli = dadosCliente();
+    if (!cli.email && !cli.telefone) {
+      showToast('Indique um email ou telefone para a Novari o contactar.');
+      return;
     }
-    sendProjectByMailto(anexo);
+    enviando = true;
+    const botao = $('sendProjectBtn');
+    if (botao) botao.disabled = true;
+    try {
+      const vistas = capturarVistas();
+      // Com o backend disponível, o projeto fica registado na Novari (ficha + 3D interativo)
+      if (window.NovariAPI && (await window.NovariAPI.disponivel())) {
+        try {
+          const r = await window.NovariAPI.enviar(
+            Store.obter(),
+            { nome: cli.nome || 'Cliente', email: cli.email || null, telefone: cli.telefone || null },
+            cli.notas,
+            vistas
+          );
+          if (r.emailEnviado) {
+            showToast('Projeto enviado para a Novari.');
+            return;
+          }
+          // o resumo do servidor já traz os links da ficha (medidas + 3D)
+          abrirEmail(r.resumo);
+          return;
+        } catch (e) {
+          console.warn('[Novari] não foi possível registar o envio no servidor:', e.message);
+        }
+      }
+      let imagem = null;
+      try {
+        imagem = await montarPlanificacao(vistas);
+      } catch (e) {
+        console.warn('[Novari] não foi possível preparar a imagem da planificação 3D', e);
+      }
+      showToast('A enviar o projeto para a Novari…');
+      enviarPorFormulario(camposDoProjeto(Store.obter(), cli), imagem, cli);
+    } finally {
+      enviando = false;
+      if (botao) botao.disabled = false;
+    }
   }
 
-  function abrirEmail(corpo, mensagem) {
-    window.location.href = `mailto:novarimobiliarioexclusivo@gmail.com?subject=${encodeURIComponent('Novo projeto personalizado — Novari')}&body=${encodeURIComponent(corpo)}`;
-    showToast(mensagem || 'Email preparado para envio.');
-  }
-
-  function sendProjectByMailto(comAnexo) {
-    const p = Store.obter();
-    const name = $('clientName').value.trim() || 'Cliente';
-    const email = $('clientEmail').value.trim() || 'Não informado';
-    const phone = $('clientPhone').value.trim() || 'Não informado';
-    const notes = $('clientNotes').value.trim() || 'Sem observações adicionais.';
-    const orc = Store.calcularOrcamento(p);
-    const modulos = p.modulos.map((m) => `- ${m.nome} (${dim(m)})`).join('\n');
-    const body = [
-      'NOVO PROJETO RECEBIDO', '',
-      'CLIENTE', `Nome: ${name}`, `Email: ${email}`, `Telefone: ${phone}`, '',
-      'PROJETO',
-      `Tipo: ${C.AMBIENTES[p.tipo]}`,
-      `Dimensões: ${p.espaco.largura} × ${p.espaco.profundidade} × ${p.espaco.altura} cm`,
-      `Material: ${C.MATERIAIS[p.material].nome}`,
-      `Acabamento: ${p.acabamento}`,
-      `Estilo: ${(C.ESTILOS[p.estilo] || C.ESTILOS.moderno).nome}`, '',
-      'CONFIGURAÇÃO', modulos || 'Nenhum módulo definido.', '',
-      ...(comAnexo ? ['PLANIFICAÇÃO 3D', 'Em anexo: projeto-novari-planificacao-3d.jpg (perspetiva, planta, frontal e lateral).', ''] : []),
-      'VALOR APROXIMADO (não é orçamento final)', C.formatarMoeda(orc.total), '',
-      'OBSERVAÇÕES', [p.observacoes, notes].filter(Boolean).join(' ')
-    ].join('\n');
-    abrirEmail(body, comAnexo ? 'Anexe ao email a imagem 3D que foi descarregada.' : null);
+  function abrirEmail(corpo) {
+    window.location.href = `mailto:${EMAIL_NOVARI}?subject=${encodeURIComponent('Novo projeto personalizado — Novari')}&body=${encodeURIComponent(corpo)}`;
+    showToast('Email preparado para envio.');
   }
 
   // ---------------------------------------------------------------
