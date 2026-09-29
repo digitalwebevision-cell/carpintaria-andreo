@@ -1,11 +1,19 @@
 /* Todas as rotas da API, montadas em /api. */
 const { Router } = require('express');
+const rateLimit = require('express-rate-limit');
 const { getDb } = require('../database');
 const aiService = require('../services/aiService');
 const notificationService = require('../services/notificationService');
 const pkg = require('../package.json');
 
 const router = Router();
+
+const apiLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minuto
+  max: 60 // máximo de 60 requisições por IP por minuto
+});
+
+router.use(apiLimiter);
 
 router.get('/health', async (req, res) => {
   let banco = 'ok';
